@@ -18,5 +18,11 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Ich lerne mit diesem Projekt: erkläre Entscheidungen kurz.
 - Kleine Schritte, nach jedem Schritt Tests ausführen.
 
+## Befehle
+- Einrichten: `python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"`
+- Tests: `.venv/bin/pytest`
+- Partie: `.venv/bin/python main.py --seed 1 --spieler 7`
+
 ## Aktueller Stand
-Meilenstein 1: Engine ohne KI
+Meilenstein 1: Engine ohne KI – umgesetzt (Engine, Rollen, MockAgent, Tests).
+Als Nächstes: Meilenstein 2, erster LLM-Agent über `werwolf/schnittstelle.py`.
