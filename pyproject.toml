@@ -1,0 +1,15 @@
+[project]
+name = "werwolf-ki"
+version = "0.1.0"
+description = "LLM-Agenten spielen Werwolf gegeneinander"
+requires-python = ">=3.12"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools]
+packages = ["core", "werwolf"]
