@@ -3,9 +3,10 @@ name = "werwolf-ki"
 version = "0.1.0"
 description = "LLM-Agenten spielen Werwolf gegeneinander"
 requires-python = ">=3.12"
+dependencies = ["openai>=1.40", "python-dotenv>=1.0"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "httpx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -13,3 +14,6 @@ pythonpath = ["."]
 
 [tool.setuptools]
 packages = ["core", "werwolf"]
+
+[tool.setuptools.package-data]
+werwolf = ["prompts/*.txt"]
