@@ -5,7 +5,9 @@ wird später für eine Agenten-Simulation wiederverwendet.
 
 ## Architektur
 - core/: Agent, Gedächtnis, LLM-Client, Tool-Schemas. Kennt KEINE Werwolf-Regeln.
-- werwolf/: Engine, Rollen, Prompts, MockAgent. Kennt KEIN LLM-SDK.
+- werwolf/: Engine, Rollen, Prompts, MockAgent, LLMSpieler. Kennt KEIN LLM-SDK,
+  nur die Schnittstelle `core.llm_client.LLMClient`.
+- Nur core/llm_client.py importiert das openai-SDK (OpenAI-kompatibles Format).
 - main.py startet eine Partie. logs/ für JSONL und Spielprotokolle.
 
 ## Konventionen
@@ -22,7 +24,11 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Einrichten: `python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"`
 - Tests: `.venv/bin/pytest`
 - Partie: `.venv/bin/python main.py --seed 1 --spieler 7`
+- Partie mit LLM: `.env` aus `.env.example` anlegen, dann `.venv/bin/python main.py --llm 1`
 
 ## Aktueller Stand
 Meilenstein 1: Engine ohne KI – umgesetzt (Engine, Rollen, MockAgent, Tests).
-Als Nächstes: Meilenstein 2, erster LLM-Agent über `werwolf/schnittstelle.py`.
+Meilenstein 2: Erster LLM-Agent – umgesetzt (LLM-Client, Tool-Schemas, LLMSpieler,
+Konfiguration über .env, Budget-Limit, Tests mit Fake-Client).
+Als Nächstes: Meilenstein 3, alle Spieler als LLM, Persönlichkeiten, Gedächtnis kürzen,
+lesbares Spielprotokoll.

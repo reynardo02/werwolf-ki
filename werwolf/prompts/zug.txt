@@ -1,0 +1,13 @@
+Runde {runde}, Phase: {phase}
+Noch lebend: {lebende}
+
+Dein Geheimwissen:
+{geheimwissen}
+
+Deine Notizen aus früheren Runden:
+{notizen}
+
+Bisheriger Spielverlauf:
+{ereignisse}
+
+{aufgabe}
