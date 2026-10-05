@@ -18,7 +18,15 @@ from werwolf.vollmondnacht.engine import (
     SPIELER_ANSEHEN,
     VERTAUSCHEN,
 )
-from werwolf.vollmondnacht.rollen import Rolle
+from werwolf.vollmondnacht.rollen import Partei, Rolle
+
+# Wer lügen darf, hängt von der Partei ab: Werwölfe und Gerber profitieren vom Lügen,
+# das Dorf von Ehrlichkeit – nur so lassen sich die nächtlichen Kartentausche aufklären.
+LUEGEN = " Du darfst lügen und jede Rolle behaupten."
+EHRLICH = (
+    " Das Dorf gewinnt durch Ehrlichkeit: Sag offen, welche Karte du zu Beginn hattest und "
+    "was du nachts getan und gesehen hast. Wurde deine Karte vertauscht, weißt du es eventuell nicht."
+)
 
 # Kurze Strategie-Hinweise, angelehnt an die Tipps der Anleitung.
 ROLLEN_HINWEISE = {
@@ -33,7 +41,7 @@ ROLLEN_HINWEISE = {
     Rolle.SEHERIN: "Dein Wissen entlarvt Lügner. Überlege, wann du es teilst.",
     Rolle.RAEUBER: (
         "Hast du nachts eine Karte geraubt, zählt deine neue Karte: Bist du jetzt Werwolf, "
-        "spielst du für das Werwolfsrudel."
+        "spielst du für das Werwolfsrudel und darfst lügen."
     ),
     Rolle.UNRUHESTIFTERIN: (
         "Es kann helfen, offen zu sagen, wessen Karten du vertauscht hast – die beiden "
@@ -49,7 +57,8 @@ ROLLEN_HINWEISE = {
     ),
     Rolle.DORFBEWOHNER: "Die Werwölfe werden behaupten, Dorfbewohner zu sein – pass genau auf.",
     Rolle.DOPPELGAENGERIN: (
-        "Nachts übernimmst du die Rolle eines Mitspielers und gehörst dann zu dessen Partei."
+        "Nachts übernimmst du die Rolle eines Mitspielers und gehörst dann zu dessen Partei. "
+        "Wirst du Werwolf oder Günstling, darfst du lügen, sonst hilft dem Dorf die Wahrheit."
     ),
 }
 
@@ -95,6 +104,13 @@ _TEXT = {
 _BEGRUENDUNG = {"type": "string", "description": "Deine ehrliche, private Begründung. Niemand sieht sie."}
 
 
+def rollen_hinweis(rolle: Rolle) -> str:
+    """Strategie-Hinweis plus, je nach Partei der Startkarte, Lügen oder Ehrlichkeit."""
+    if rolle is Rolle.DOPPELGAENGERIN:
+        return ROLLEN_HINWEISE[rolle]  # Partei steht erst nach dem Nachahmen fest
+    return ROLLEN_HINWEISE[rolle] + (EHRLICH if rolle.partei is Partei.DORF else LUEGEN)
+
+
 class VollmondLLMSpieler(LLMSpieler):
     PROMPT_ORDNER = Path(__file__).parent / "prompts"
 
@@ -102,7 +118,7 @@ class VollmondLLMSpieler(LLMSpieler):
         return self._system_vorlage.format(
             name=zug.ich,
             rolle=zug.rolle.value,
-            rollen_hinweis=ROLLEN_HINWEISE[zug.rolle],
+            rollen_hinweis=rollen_hinweis(zug.rolle),
             persoenlichkeit=self.persoenlichkeit,
         )
 

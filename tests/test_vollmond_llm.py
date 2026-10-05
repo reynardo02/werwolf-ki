@@ -64,3 +64,30 @@ def test_prompts_und_tools() -> None:
     assert tools[1].parameter == {}
     # Die Doppelgängerin liegt in der Mitte, also fragt die Engine nie nach „nachahmen“.
     assert not any(NACHAHMEN in [t.name for t in ts] for _, _, ts in client.anfragen_liste)
+
+
+def test_nur_werwoelfe_und_gerber_duerfen_luegen() -> None:
+    from werwolf.vollmondnacht.llm_spieler import EHRLICH, LUEGEN, rollen_hinweis
+
+    for rolle in Rolle:
+        hinweis = rollen_hinweis(rolle)
+        if rolle in (Rolle.WERWOLF, Rolle.GUENSTLING, Rolle.GERBER):
+            assert LUEGEN in hinweis and EHRLICH not in hinweis, rolle
+        elif rolle is Rolle.DOPPELGAENGERIN:
+            assert "darfst du lügen" in hinweis  # hängt von der Kopie ab
+        else:
+            assert EHRLICH in hinweis and LUEGEN not in hinweis, rolle
+    # Der Räuber kann nachts zum Werwolf werden und darf dann lügen.
+    assert "darfst lügen" in rollen_hinweis(Rolle.RAEUBER)
+
+
+def test_system_prompt_erlaubt_luegen_nicht_mehr_allen() -> None:
+    client = FakeClient()
+    verteilung = {"Anna": Rolle.SEHERIN, "Ben": Rolle.WERWOLF, "Clara": Rolle.DORFBEWOHNER}
+    mitte = [Rolle.DORFBEWOHNER, Rolle.RAEUBER, Rolle.UNRUHESTIFTERIN]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                   verteilung=verteilung, mitte=mitte).spielen()
+    seherin_system = client.anfragen_liste[0][0]  # erste Anfrage: Nacht der Seherin
+    assert "Du darfst alles behaupten und lügen" not in seherin_system
+    assert "Das Dorf gewinnt durch Ehrlichkeit" in seherin_system
