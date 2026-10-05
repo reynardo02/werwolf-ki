@@ -60,5 +60,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   16,4 %, 1/10 – neue Basis. Serie 3 war durch die Verzerrung geschönt bzw. 10 Partien streuen stark.
   Das Dorf stimmt in der Kontrollserie zu 50 % gegen die Start-Werwölfe, aber nur zu 14 % gegen
   die End-Werwölfe: In 4 Partien starb der ursprüngliche Werwolf, dessen Karte aber getauscht war.
-- Ideen: Hinweis zum Kartenweg fürs Dorf; Persönlichkeit „lenkt gern vom Thema ab“ schadet.
+- Serie 4, Hinweis zum Kartenweg fürs Dorf (KARTENWEG in vollmondnacht/llm_spieler.py),
+  gemessen gegen die Kontrollserie: Ergebnis offen.
+- Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
