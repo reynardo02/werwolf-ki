@@ -167,10 +167,15 @@ def mensch_bericht(partien: list[VollmondPartie]) -> str:
             z.append(_zeile(f"  als {partei}", f"{gewonnen} von {len(als)} gewonnen"))
 
     # Deine Stimmen, wenn du am Ende im Dorf warst: Hast du einen Werwolf getroffen?
-    im_dorf = [p for p in eigene if _partei(p.endrollen[p.mensch]) == "Dorfgemeinschaft" and p.mensch in p.stimmen]
+    # Nur Partien mit Werwolf am Tisch – liegen beide in der Mitte, gibt es nichts zu treffen.
+    im_dorf = [
+        p for p in eigene
+        if _partei(p.endrollen[p.mensch]) == "Dorfgemeinschaft" and p.mensch in p.stimmen
+        and WERWOLF in p.endrollen.values()
+    ]
     treffer = sum(p.endrollen[p.stimmen[p.mensch]] == WERWOLF for p in im_dorf)
     if im_dorf:
-        z.append(_zeile("Stimme traf Werwolf", f"{treffer} von {len(im_dorf)} (im Dorf)"))
+        z.append(_zeile("Stimme traf Werwolf", f"{treffer} von {len(im_dorf)} (im Dorf, mit Werwolf am Tisch)"))
 
     # Wie sehr haben die anderen dich verdächtigt? Vergleich mit fairer Verteilung.
     gegen_dich = sum(sum(ziel == p.mensch for ziel in p.stimmen.values()) for p in eigene)

@@ -61,10 +61,13 @@ def test_mensch_bericht() -> None:
         partie("Dorfbewohner", "Dorfbewohner", "Ben", ["Anna", "Clara"]),
         partie("Räuber", "Werwolf", "Clara", []),  # Karte getauscht: zählt als Werwolfsrudel
         VollmondPartie("Test", {}, {}, ["x"], [], {}, 0, None),  # ohne Mensch: wird ignoriert
+        # Kein Werwolf am Tisch: zählt als Partie, aber nicht bei „Stimme traf Werwolf“.
+        VollmondPartie("Test", {"Anna": "Dorfbewohner", "Ben": "Seherin"}, {"Anna": "Dorfbewohner", "Ben": "Seherin"},
+                       [], ["Anna"], {"Anna": "Ben", "Ben": "Anna"}, 0, None, sieger=[], mensch="Anna"),
     ]
     text = mensch_bericht(partien)
-    assert "Partien:" in text and "50.0%" in text
-    assert "als Dorfgemeinschaft:" in text and "1 von 1 gewonnen" in text
+    assert "Partien:" in text and "33.3%" in text
+    assert "als Dorfgemeinschaft:" in text and "1 von 2 gewonnen" in text
     assert "als Werwolfsrudel:" in text and "0 von 1 gewonnen" in text
-    assert "1 von 1 (im Dorf)" in text  # nur die Stimme als Dorf zählt
+    assert "1 von 1 (im Dorf" in text  # nur die Stimme als Dorf mit Werwolf am Tisch zählt
     assert "Räuber → Werwolf" in text
