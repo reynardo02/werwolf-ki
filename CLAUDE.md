@@ -56,6 +56,9 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Das Dorf hielt ehrliche Kartentauscher für Lügner, Werwölfe nutzten den Hinweis aus.
 - Serie 3, Lügen nur für Werwolf/Günstling/Gerber, Ehrlichkeit fürs Dorf: 47,3 %, 4/10. Übernommen.
   Hauptfehler danach: Das Dorf verfolgt nicht, wohin eine Werwolf-Karte getauscht wurde.
-- Positions-Verzerrung behoben (LLMs wählten meist den ersten Namen); Kontrollserie offen.
+- Positions-Verzerrung behoben (LLMs wählten meist den ersten Namen). Kontrollserie damit:
+  16,4 %, 1/10 – neue Basis. Serie 3 war durch die Verzerrung geschönt bzw. 10 Partien streuen stark.
+  Das Dorf stimmt in der Kontrollserie zu 50 % gegen die Start-Werwölfe, aber nur zu 14 % gegen
+  die End-Werwölfe: In 4 Partien starb der ursprüngliche Werwolf, dessen Karte aber getauscht war.
 - Ideen: Hinweis zum Kartenweg fürs Dorf; Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
