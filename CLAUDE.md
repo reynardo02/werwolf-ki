@@ -12,6 +12,8 @@ wird später für eine Agenten-Simulation wiederverwendet.
   Nutzt Schnittstelle, MockAgent, Protokoll und Log von werwolf/ mit.
 - Nur core/llm_client.py importiert das openai-SDK (OpenAI-kompatibles Format).
 - main.py startet eine Partie. logs/ für JSONL und Spielprotokolle.
+- web/: Web-Oberfläche ohne Framework (http.server + eine HTML-Seite). Die Partie läuft in einem
+  Thread, der Browser fragt den Stand per Polling ab. Er bekommt nur Öffentliches und dein Geheimwissen.
 
 ## Konventionen
 - Python 3.12, Typ-Hints, dataclasses
@@ -34,6 +36,7 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Selbst mitspielen: `.venv/bin/python main.py --regeln vollmondnacht --mensch [NAME] --llm alle`
   (Konsole zeigt nur Öffentliches, Geheimnisse danach im Protokoll)
 - Eigene Bilanz: `.venv/bin/python auswerten.py --mensch` (nur Vollmondnacht-Partien mit Mensch)
+- Im Browser spielen: `.venv/bin/python -m web` (öffnet http://127.0.0.1:8000/, `--port`, `--kein-browser`)
 - Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand
@@ -53,6 +56,8 @@ Zusatz: Spielvariante Vollmondnacht – umgesetzt (alle 12 Rollen inkl. Doppelg�
 alle Szenarien, VollmondLLMSpieler, eigene Auswertung).
 Meilenstein 5, Teil 1: Selbst mitspielen – umgesetzt (werwolf/mensch_spieler.py, `--mensch`,
 beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe).
+Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server.py, web/static/index.html;
+getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
@@ -80,4 +85,4 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   (Tauscher, Seherin, Schlaflose), 3× Kartenweg übersehen, 2× einfacher Dorfbewohner.
   Prompt-Hinweise stoßen bei gemini-3.5-flash-lite an Grenzen.
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
-Als Nächstes: Meilenstein 5, Teil 2: Web-Oberfläche.
+Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.

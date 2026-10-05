@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from werwolf.mensch_spieler import BESCHRIFTUNG
+from werwolf.roles import Rolle as KlassischeRolle
 from werwolf.schnittstelle import ZIEL_TOOLS, Aktion, Ereignis, Zug
 from werwolf.vollmondnacht.rollen import Rolle as VollmondRolle
 
@@ -60,12 +61,18 @@ class WebSpieler:
         self._antworten: queue.Queue[Aktion | None] = queue.Queue()
         self.frage: dict[str, Any] | None = None
         self.geheimwissen: list[str] = []
+        self.rolle: Any = None  # zuletzt gesehene Rolle, für „gewonnen?“ im klassischen Spiel
+        # Laufende Nummer: Zwei gleich aussehende Fragen (z. B. zweimal „Etwas sagen“)
+        # muss der Browser trotzdem als neue Frage erkennen.
+        self._nummer = 0
         self._lock = threading.Lock()
 
     def handeln(self, zug: Zug) -> Aktion:
         with self._lock:
-            self.frage = frage_aus_zug(zug)
+            self._nummer += 1
+            self.frage = frage_aus_zug(zug) | {"nummer": self._nummer}
             self.geheimwissen = list(zug.geheimwissen)
+            self.rolle = zug.rolle
         aktion = self._antworten.get()  # wartet auf den Browser
         if aktion is None:
             raise Abgebrochen()
@@ -99,6 +106,7 @@ class Sitzung:
     ereignisse: list[dict[str, str]] = field(default_factory=list)
     ende: str | None = None
     fehler: str | None = None
+    gewonnen: bool | None = None  # steht nach dem Spielende fest
     mensch: WebSpieler = field(default_factory=WebSpieler)
 
     def __post_init__(self) -> None:
@@ -110,6 +118,11 @@ class Sitzung:
         if ereignis.oeffentlich:  # Geheimes (Nachtaktionen, Begründungen) nie an den Browser
             with self._lock:
                 self.ereignisse.append({"phase": ereignis.phase.value, "art": ereignis.art, "text": ereignis.text})
+                if ereignis.art == "spielende":
+                    if "sieger" in ereignis.daten:  # Vollmondnacht nennt die Sieger direkt
+                        self.gewonnen = self.ich in ereignis.daten["sieger"].split(", ")
+                    elif isinstance(self.mensch.rolle, KlassischeRolle):  # klassisch: dein Team
+                        self.gewonnen = self.mensch.rolle.team.value == ereignis.daten.get("gewinner")
 
     def starten(self) -> None:
         self._thread = threading.Thread(target=self._spielen, daemon=True)
@@ -150,6 +163,7 @@ class Sitzung:
                 "frage": self.mensch.frage,
                 "geheimwissen": self.mensch.geheimwissen,
                 "ende": self.ende,
+                "gewonnen": self.gewonnen,
                 "fehler": self.fehler,
                 "protokoll": f"logs/{self.dateiname}.txt" if self.ende else None,
             }

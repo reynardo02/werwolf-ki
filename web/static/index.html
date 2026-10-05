@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Werwolf-KI</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --karte: #ffffff; --text: #1f1d1a; --leise: #6b665e; --rand: #dcd6cb;
+    --akzent: #7a3e9d; --akzent-text: #ffffff; --gut: #2f7d4a; --schlecht: #b3261e; --markiert: #f0e8f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17161a; --karte: #222027; --text: #ece9f1; --leise: #a39fae; --rand: #3a3742;
+      --akzent: #b98ad8; --akzent-text: #17161a; --gut: #6fcf8f; --schlecht: #f2867d; --markiert: #2e2638;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+  header { padding: 16px; border-bottom: 1px solid var(--rand); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 1.4rem; }
+  header span { color: var(--leise); font-size: .9rem; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 1fr 360px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } #seite { order: -1; } }
+  section { background: var(--karte); border: 1px solid var(--rand); border-radius: 10px; padding: 16px; }
+  h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  label { display: block; font-size: .85rem; color: var(--leise); margin: 8px 0 4px; }
+  select, input, textarea, button { font: inherit; color: inherit; }
+  select, input, textarea { width: 100%; padding: 8px; border: 1px solid var(--rand); border-radius: 6px; background: var(--bg); }
+  textarea { min-height: 80px; resize: vertical; }
+  button { margin-top: 12px; padding: 10px 14px; border: 0; border-radius: 6px; background: var(--akzent); color: var(--akzent-text); cursor: pointer; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #tisch { min-height: 300px; max-height: 70vh; overflow-y: auto; }
+  .phase { margin: 14px 0 4px; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--leise); }
+  .ereignis { margin: 2px 0; padding: 4px 8px; border-radius: 6px; }
+  .ereignis.rede { background: var(--bg); }
+  .ereignis.ich { background: var(--markiert); }
+  .ereignis.tod, .ereignis.spielende { font-weight: 600; }
+  .rolle { font-size: 1.3rem; font-weight: 700; }
+  .wissen { margin: 8px 0 0; padding-left: 18px; }
+  .wahl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .wahl button { margin: 0; background: var(--bg); color: var(--text); border: 1px solid var(--rand); font-weight: 400; }
+  .wahl button.aktiv { background: var(--akzent); color: var(--akzent-text); border-color: var(--akzent); }
+  .hinweis { color: var(--schlecht); }
+  .warten { color: var(--leise); font-style: italic; }
+  .banner { padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--rand); }
+  .banner.fehler { border-color: var(--schlecht); color: var(--schlecht); }
+  .banner.ende { border-color: var(--gut); }
+  .leer { color: var(--leise); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Werwolf-KI</h1>
+  <span id="kopfzeile">Spiel gegen LLM-Agenten</span>
+</header>
+<main>
+  <section>
+    <h2>Am Tisch</h2>
+    <div id="banner"></div>
+    <div id="tisch"><p class="leer">Starte rechts eine neue Partie.</p></div>
+  </section>
+
+  <div id="seite">
+    <section id="du" hidden>
+      <h2>Du</h2>
+      <div id="rolle-titel" class="leer"></div>
+      <div id="rolle" class="rolle"></div>
+      <ul id="wissen" class="wissen"></ul>
+      <div id="zug" style="margin-top:16px"></div>
+    </section>
+
+    <section style="margin-top:16px">
+      <h2>Neue Partie</h2>
+      <form id="neu">
+        <label for="regeln">Regeln</label>
+        <select id="regeln">
+          <option value="vollmondnacht">Werwölfe Vollmondnacht</option>
+          <option value="klassisch">Klassisch</option>
+        </select>
+        <div class="zeile">
+          <div>
+            <label for="spieler">Spieler</label>
+            <input id="spieler" type="number" min="3" max="10" value="7">
+          </div>
+          <div>
+            <label for="llm">LLM-Mitspieler</label>
+            <select id="llm"></select>
+          </div>
+        </div>
+        <label for="ich">Dein Platz</label>
+        <select id="ich"></select>
+        <div id="szenario-feld">
+          <label for="szenario">Szenario</label>
+          <select id="szenario"></select>
+        </div>
+        <button type="submit">Partie starten</button>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script>
+// Stand im Browser: wie viele Ereignisse wir schon zeigen und welche Frage gerade offen ist.
+let anzahl = 0, letztePhase = null, frageJson = null, ich = null, timer = null;
+const $ = (id) => document.getElementById(id);
+
+// --- Formular -------------------------------------------------------------
+const GRENZEN = { vollmondnacht: [3, 10], klassisch: [5, 7] };
+
+async function optionenLaden() {
+  const regeln = $("regeln").value, [min, max] = GRENZEN[regeln];
+  const feld = $("spieler");
+  feld.min = min; feld.max = max;
+  feld.value = Math.min(max, Math.max(min, Number(feld.value) || 7));
+  const n = Number(feld.value);
+  const antwort = await fetch(`/api/optionen?spieler=${n}`).then((r) => r.json());
+  fuellen($("ich"), antwort.namen);
+  fuellen($("szenario"), antwort.szenarien);
+  fuellen($("llm"), ["alle", ...Array.from({ length: n }, (_, i) => String(i))],
+          (w) => (w === "alle" ? "alle anderen" : w === "0" ? "keine (nur MockAgenten)" : w));
+  $("szenario-feld").hidden = regeln !== "vollmondnacht";
+}
+
+function fuellen(select, werte, text = (w) => w) {
+  const alt = select.value;
+  select.replaceChildren(...werte.map((w) => new Option(text(w), w)));
+  if (werte.includes(alt)) select.value = alt;
+}
+
+$("regeln").addEventListener("change", optionenLaden);
+$("spieler").addEventListener("change", optionenLaden);
+
+$("neu").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const daten = {
+    regeln: $("regeln").value, spieler: Number($("spieler").value), llm: $("llm").value,
+    ich: $("ich").value, szenario: $("regeln").value === "vollmondnacht" ? $("szenario").value : null,
+  };
+  const antwort = await fetch("/api/neu", { method: "POST", body: JSON.stringify(daten) });
+  if (!antwort.ok) { zeigeBanner((await antwort.json()).fehler, "fehler"); return; }
+  anzahl = 0; letztePhase = null; frageJson = null;
+  $("tisch").replaceChildren();
+  $("banner").replaceChildren();
+  abfragen();
+});
+
+// --- Abfragen (Polling) ---------------------------------------------------
+async function abfragen() {
+  clearTimeout(timer);
+  try {
+    const z = await fetch(`/api/zustand?seit=${anzahl}`).then((r) => r.json());
+    if (z.laeuft) zeichnen(z);
+    if (z.laeuft && !z.ende && !z.fehler) timer = setTimeout(abfragen, 1000);
+  } catch {
+    zeigeBanner("Server nicht erreichbar – läuft python -m web noch?", "fehler");
+  }
+}
+
+function zeichnen(z) {
+  ich = z.ich;
+  $("kopfzeile").textContent = `Du spielst als ${z.ich} · Seed ${z.seed}`;
+  for (const e of z.ereignisse) ereignisAnzeigen(e);
+  anzahl = z.anzahl;
+
+  $("du").hidden = false;
+  if (z.frage) {
+    $("rolle-titel").textContent = z.frage.rolle_titel;
+    $("rolle").textContent = z.frage.rolle;
+  }
+  $("wissen").replaceChildren(...z.geheimwissen.map((w) => Object.assign(document.createElement("li"), { textContent: w })));
+
+  // Die Frage nur neu zeichnen, wenn sie sich ändert – sonst ginge dein Text verloren.
+  const neu = JSON.stringify(z.frage);
+  if (neu !== frageJson) { frageJson = neu; zugAnzeigen(z.frage); }
+
+  if (z.fehler) zeigeBanner(`Fehler: ${z.fehler}`, "fehler");
+  else if (z.ende) {
+    const du = z.gewonnen === true ? "Du hast gewonnen! " : z.gewonnen === false ? "Du hast verloren. " : "";
+    zeigeBanner(`${du}Ergebnis: ${z.ende}. Alle Geheimnisse stehen im Protokoll ${z.protokoll}.`, "ende");
+    $("zug").replaceChildren();
+  }
+}
+
+function ereignisAnzeigen(e) {
+  const tisch = $("tisch");
+  if (e.phase !== letztePhase) {
+    letztePhase = e.phase;
+    tisch.append(Object.assign(document.createElement("div"), { className: "phase", textContent: e.phase }));
+  }
+  const eigene = e.art === "rede" && e.text.startsWith(`${ich}:`);
+  tisch.append(Object.assign(document.createElement("div"), {
+    className: `ereignis ${e.art}${eigene ? " ich" : ""}`, textContent: e.text,
+  }));
+  tisch.scrollTop = tisch.scrollHeight;
+}
+
+function zeigeBanner(text, art) {
+  $("banner").replaceChildren(Object.assign(document.createElement("div"), { className: `banner ${art}`, textContent: text }));
+}
+
+// --- Dein Zug -------------------------------------------------------------
+const PARAMETER = { ziel: "Wen?", ziel1: "Erster Spieler", ziel2: "Zweiter Spieler", karte: "Welche Karte aus der Mitte?" };
+
+function zugAnzeigen(frage) {
+  const zug = $("zug");
+  if (!frage) {
+    zug.replaceChildren(Object.assign(document.createElement("p"), { className: "warten", textContent: "Die anderen sind dran …" }));
+    return;
+  }
+  const teile = [Object.assign(document.createElement("h2"), { textContent: `Du bist dran (${frage.phase})` })];
+  if (frage.hinweis) teile.push(Object.assign(document.createElement("p"), { className: "hinweis", textContent: frage.hinweis }));
+
+  let tool = frage.tools.length === 1 ? frage.tools[0] : null;
+  const werte = {};
+  const bereich = document.createElement("div");
+  const senden = Object.assign(document.createElement("button"), { textContent: "Absenden", disabled: true });
+
+  // Gewählte Werte prüfen: alles gewählt, Text nicht leer, zwei Ziele verschieden.
+  const pruefen = () => {
+    const text = bereich.querySelector("textarea");
+    const gewaehlt = tool && Object.keys(tool.parameter).every((p) => werte[p]);
+    const verschieden = new Set(Object.values(werte)).size === Object.values(werte).length;
+    senden.disabled = !(gewaehlt && verschieden && (!tool.text || text.value.trim()));
+  };
+
+  const parameterZeigen = () => {
+    for (const k of Object.keys(werte)) delete werte[k];
+    bereich.replaceChildren();
+    if (!tool) return pruefen();
+    for (const [name, moeglich] of Object.entries(tool.parameter)) {
+      bereich.append(Object.assign(document.createElement("label"), { textContent: PARAMETER[name] || name }));
+      bereich.append(wahlknoepfe(moeglich, (w) => { werte[name] = w; pruefen(); }));
+    }
+    if (tool.text) {
+      const feld = Object.assign(document.createElement("textarea"), { placeholder: "Was sagst du?" });
+      feld.addEventListener("input", pruefen);
+      feld.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !senden.disabled) { e.preventDefault(); senden.click(); } });
+      bereich.append(feld);
+      setTimeout(() => feld.focus());
+    }
+    pruefen();
+  };
+
+  if (frage.tools.length > 1) {
+    teile.push(Object.assign(document.createElement("label"), { textContent: "Was tust du?" }));
+    teile.push(wahlknoepfe(frage.tools.map((t) => t.beschriftung), (b) => {
+      tool = frage.tools.find((t) => t.beschriftung === b); parameterZeigen();
+    }));
+  } else {
+    teile.push(Object.assign(document.createElement("p"), { textContent: tool.beschriftung }));
+  }
+
+  senden.addEventListener("click", async () => {
+    senden.disabled = true;
+    const parameter = { ...werte };
+    const text = bereich.querySelector("textarea");
+    if (tool.text) parameter.text = text.value.trim();
+    await fetch("/api/aktion", { method: "POST", body: JSON.stringify({ tool: tool.name, parameter }) });
+    abfragen();
+  });
+
+  zug.replaceChildren(...teile, bereich, senden);
+  parameterZeigen();
+}
+
+function wahlknoepfe(moeglich, gewaehlt) {
+  const leiste = Object.assign(document.createElement("div"), { className: "wahl" });
+  for (const m of moeglich) {
+    const knopf = Object.assign(document.createElement("button"), { type: "button", textContent: m });
+    knopf.addEventListener("click", () => {
+      leiste.querySelectorAll("button").forEach((b) => b.classList.toggle("aktiv", b === knopf));
+      gewaehlt(m);
+    });
+    leiste.append(knopf);
+  }
+  return leiste;
+}
+
+optionenLaden();
+abfragen();  // Läuft schon eine Partie (z. B. nach Neuladen der Seite), weiter anzeigen.
+</script>
+</body>
+</html>
