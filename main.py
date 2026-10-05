@@ -8,7 +8,12 @@ from datetime import datetime
 from pathlib import Path
 
 from core.konfig import konfig_laden
-from core.llm_client import BudgetErschoepft, OpenAIKompatiblerClient, Statistik
+from core.llm_client import (
+    BudgetErschoepft,
+    KontingentErschoepft,
+    OpenAIKompatiblerClient,
+    Statistik,
+)
 from werwolf.engine import Engine
 from werwolf.jsonl_log import JsonlLog
 from werwolf.llm_spieler import LLMSpieler, persoenlichkeiten_laden
@@ -108,6 +113,17 @@ def partie_spielen(
         protokoll.schreiben()
         protokoll.schreiben(f"Partie abgebrochen: {fehler} (LLM_MAX_AUFRUFE in der .env)")
         log.eintrag("abbruch", grund=str(fehler), api=asdict(client.statistik) if client else None)
+    except (KontingentErschoepft, KeyboardInterrupt) as fehler:
+        # Die ganze Serie muss stoppen. Vorher die Partie als abgebrochen festhalten,
+        # damit Protokoll und Log vollständig lesbar bleiben.
+        grund = "Mit Strg+C abgebrochen" if isinstance(fehler, KeyboardInterrupt) else (
+            "Kontingent des Anbieters erschöpft (z. B. Tageslimit)"
+        )
+        protokoll.schreiben()
+        protokoll.schreiben(f"Partie abgebrochen: {grund}")
+        log.eintrag("abbruch", grund=grund, api=asdict(client.statistik) if client else None)
+        protokoll.speichern(ordner / f"{dateiname}.txt")
+        raise
     finally:
         log.schliessen()
 
@@ -161,7 +177,20 @@ def main() -> None:
     for i in range(args.partien):
         seed = start_seed + i
         dateiname = f"partie_{zeitstempel}" + (f"_{i + 1:03d}" if args.partien > 1 else "")
-        kurz = partie_spielen(seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich)
+        try:
+            kurz = partie_spielen(seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich)
+        except (KontingentErschoepft, KeyboardInterrupt) as fehler:
+            if isinstance(fehler, KontingentErschoepft):
+                print(f"\nPartie {i + 1} abgebrochen: Der Anbieter sperrt für lange Zeit.")
+                print(f"Meldung: {str(fehler)[:300]}")
+            else:
+                print(f"\nPartie {i + 1} mit Strg+C abgebrochen.")
+            print("Später weitermachen (gleiche Seeds, abgebrochene Partie wird wiederholt):")
+            print(
+                f"  python main.py --llm {args.llm} --spieler {args.spieler} "
+                f"--partien {args.partien - i} --seed {seed}"
+            )
+            break
         if not ausfuehrlich:
             print(f"Partie {i + 1}/{args.partien} (Seed {seed}): {kurz}")
 

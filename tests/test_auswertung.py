@@ -75,3 +75,22 @@ def test_zwanzig_partien_auswerten(tmp_path: Path) -> None:
     assert a.dorf_stimmen > 0 and a.pruefungen > 0
     text = bericht(a, "Test")
     assert "Siegquote Werwölfe" in text and "Zufall wäre" in text
+
+
+def test_abbruch_wird_geloggt_und_weitergereicht(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tageslimit oder Strg+C: Partie als 'abbruch' loggen, dann die Serie stoppen."""
+    import main
+    from core.llm_client import KontingentErschoepft
+    from werwolf.engine import Engine
+
+    def gesperrt(self: Engine) -> None:
+        raise KontingentErschoepft("PerDay")
+
+    monkeypatch.setattr(Engine, "spielen", gesperrt)
+    with pytest.raises(KontingentErschoepft):
+        main.partie_spielen(1, 7, 0, None, "partie", ausfuehrlich=False, ordner=tmp_path)
+
+    zeilen = log_lesen(tmp_path / "partie.jsonl")
+    assert zeilen[-1]["art"] == "abbruch"
+    assert "Partie abgebrochen" in (tmp_path / "partie.txt").read_text(encoding="utf-8")
+    assert partie_aus_log(zeilen).gewinner is None  # zählt in der Auswertung als abgebrochen
