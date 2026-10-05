@@ -129,3 +129,79 @@ def test_lokaler_server_braucht_keinen_key(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("LLM_MODEL", "qwen3:4b")
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     assert konfig_laden(env_datei=None).api_key == "lokal"
+
+
+class FakeUhr:
+    """Ersetzt time.monotonic und time.sleep: Warten stellt nur die Uhr vor."""
+
+    def __init__(self) -> None:
+        self.jetzt = 0.0
+        self.pausen: list[float] = []
+
+    def __call__(self) -> float:
+        return self.jetzt
+
+    def schlafen(self, sekunden: float) -> None:
+        self.pausen.append(sekunden)
+        self.jetzt += sekunden
+
+
+def ok(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(200, json=antwort_json([tool_call("abstimmen", '{"ziel": "Ben"}')]))
+
+
+def zu_viele(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(429, json={"error": {"message": "Quota exceeded", "code": 429}})
+
+
+def test_tempolimit_haelt_abstand() -> None:
+    uhr = FakeUhr()
+    client, gesendet = client_mit(ok, max_pro_minute=15, uhr=uhr, schlafen=uhr.schlafen)
+    for _ in range(3):
+        client.anfragen("S", "N", [TOOL])
+
+    assert len(gesendet) == 3
+    # Erste Anfrage sofort, danach je 60/15 = 4 Sekunden Abstand.
+    assert uhr.pausen == [4.0, 4.0]
+    assert client.statistik.gewartet == 8.0
+
+
+def test_ohne_tempolimit_kein_warten() -> None:
+    uhr = FakeUhr()
+    client, _ = client_mit(ok, uhr=uhr, schlafen=uhr.schlafen)
+    client.anfragen("S", "N", [TOOL])
+    client.anfragen("S", "N", [TOOL])
+    assert uhr.pausen == []
+
+
+def test_429_wird_nach_pause_wiederholt() -> None:
+    uhr = FakeUhr()
+    antworten = [zu_viele, zu_viele, ok]
+    client, gesendet = client_mit(
+        lambda r: antworten.pop(0)(r), uhr=uhr, schlafen=uhr.schlafen
+    )
+    antwort = client.anfragen("S", "N", [TOOL])
+
+    assert antwort.tool_call is not None
+    assert len(gesendet) == 3
+    assert uhr.pausen == [10.0, 20.0]
+    assert client.statistik.fehler == 0
+    assert client.statistik.aufrufe == 1  # Wiederholungen zählen nicht ins Budget
+
+
+def test_429_gibt_nach_allen_versuchen_auf() -> None:
+    uhr = FakeUhr()
+    client, gesendet = client_mit(zu_viele, uhr=uhr, schlafen=uhr.schlafen)
+    with pytest.raises(LLMFehler, match="Quota"):
+        client.anfragen("S", "N", [TOOL])
+    assert len(gesendet) == 4  # 1 Versuch + 3 Wiederholungen
+    assert uhr.pausen == [10.0, 20.0, 40.0]
+    assert client.statistik.fehler == 1
+
+
+def test_konfig_liest_tempolimit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", "https://api.beispiel.de/v1")
+    monkeypatch.setenv("LLM_MODEL", "modell-x")
+    monkeypatch.setenv("LLM_API_KEY", "geheim")
+    monkeypatch.setenv("LLM_MAX_PRO_MINUTE", "14")
+    assert konfig_laden(env_datei=None).max_pro_minute == 14

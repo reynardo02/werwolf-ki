@@ -6,6 +6,8 @@ Nur diese Datei kennt das SDK – der Rest des Projekts sieht nur `LLMClient`.
 """
 
 import json
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -36,6 +38,7 @@ class Statistik:
     fehler: int = 0  # Aufrufe, bei denen der Anbieter einen Fehler gemeldet hat
     ohne_tool_call: int = 0  # Antworten ohne (lesbaren) Tool-Call
     letzter_fehler: str = ""
+    gewartet: float = 0.0  # Sekunden, die wegen Tempolimit oder 429 gewartet wurden
 
 
 class LLMClient(Protocol):
@@ -54,8 +57,17 @@ class OpenAIKompatiblerClient:
     # "required" zwingt das Modell zu einem Tool-Call. Manche lokalen Modelle
     # kennen das nicht – dann in der .env auf "auto" stellen.
     tool_choice: str = "required"
+    # Höchstens so viele Anfragen pro Minute (0 = kein Limit). Kostenlose Tarife
+    # erlauben oft nur wenige, z. B. 15 bei Gemini.
+    max_pro_minute: int = 0
+    # Wie oft nach "429 Too Many Requests" gewartet und neu versucht wird.
+    versuche_bei_limit: int = 3
     sdk: Any = None  # Nur für Tests: ein vorbereiteter openai.OpenAI-Client
     statistik: Statistik = field(default_factory=Statistik)
+    # Uhr und Warten sind austauschbar, damit Tests nicht wirklich warten müssen.
+    uhr: Callable[[], float] = time.monotonic
+    schlafen: Callable[[float], None] = time.sleep
+    _letzte_anfrage: float | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.sdk is None:
@@ -68,21 +80,28 @@ class OpenAIKompatiblerClient:
             raise BudgetErschoepft(f"Limit von {self.max_aufrufe} API-Aufrufen erreicht.")
         self.statistik.aufrufe += 1
 
-        try:
-            antwort = self.sdk.chat.completions.create(
-                model=self.modell,
-                temperature=self.temperatur,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": nachricht},
-                ],
-                tools=[t.als_openai() for t in tools],
-                tool_choice=self.tool_choice,
-            )
-        except openai.OpenAIError as fehler:
-            self.statistik.fehler += 1
-            self.statistik.letzter_fehler = str(fehler)
-            raise LLMFehler(str(fehler)) from fehler
+        anfrage = {
+            "model": self.modell,
+            "temperature": self.temperatur,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": nachricht},
+            ],
+            "tools": [t.als_openai() for t in tools],
+            "tool_choice": self.tool_choice,
+        }
+        for versuch in range(self.versuche_bei_limit + 1):
+            self._tempo_einhalten()
+            try:
+                antwort = self.sdk.chat.completions.create(**anfrage)
+                break
+            except openai.RateLimitError as fehler:
+                # Zu viele Anfragen: kurz warten, dann neu versuchen.
+                if versuch == self.versuche_bei_limit:
+                    raise self._fehler_melden(fehler) from fehler
+                self._warten(min(60.0, 10.0 * 2**versuch))
+            except openai.OpenAIError as fehler:
+                raise self._fehler_melden(fehler) from fehler
 
         if antwort.usage:
             self.statistik.input_tokens += antwort.usage.prompt_tokens or 0
@@ -96,6 +115,24 @@ class OpenAIKompatiblerClient:
         if tool_call is None:
             self.statistik.ohne_tool_call += 1
         return Antwort(tool_call, nachricht_llm.content or "")
+
+    def _tempo_einhalten(self) -> None:
+        """Wartet, bis seit der letzten Anfrage genug Zeit vergangen ist."""
+        if self.max_pro_minute > 0 and self._letzte_anfrage is not None:
+            abstand = 60.0 / self.max_pro_minute
+            rest = self._letzte_anfrage + abstand - self.uhr()
+            if rest > 0:
+                self._warten(rest)
+        self._letzte_anfrage = self.uhr()
+
+    def _warten(self, sekunden: float) -> None:
+        self.statistik.gewartet += sekunden
+        self.schlafen(sekunden)
+
+    def _fehler_melden(self, fehler: openai.OpenAIError) -> LLMFehler:
+        self.statistik.fehler += 1
+        self.statistik.letzter_fehler = str(fehler)
+        return LLMFehler(str(fehler))
 
 
 def _ersten_tool_call_lesen(tool_calls: list[Any] | None) -> ToolCall | None:

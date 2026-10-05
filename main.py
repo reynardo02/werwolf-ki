@@ -81,6 +81,8 @@ def main() -> None:
             protokoll.schreiben(
                 f"Achtung: {st.fehler} API-Fehler, {st.ohne_tool_call} Antworten ohne Tool-Call."
             )
+        if st.gewartet:
+            protokoll.schreiben(f"Wegen Tempolimit gewartet: {st.gewartet / 60:.1f} Minuten")
         if st.letzter_fehler:
             protokoll.schreiben(f"Letzter Fehler: {st.letzter_fehler}")
 

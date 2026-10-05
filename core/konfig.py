@@ -16,6 +16,7 @@ class LLMKonfig:
     temperatur: float = 0.9
     max_aufrufe: int = 400
     tool_choice: str = "required"
+    max_pro_minute: int = 0
 
     def client(self) -> OpenAIKompatiblerClient:
         return OpenAIKompatiblerClient(
@@ -25,6 +26,7 @@ class LLMKonfig:
             temperatur=self.temperatur,
             max_aufrufe=self.max_aufrufe,
             tool_choice=self.tool_choice,
+            max_pro_minute=self.max_pro_minute,
         )
 
 
@@ -59,4 +61,5 @@ def konfig_laden(env_datei: str | None = ".env") -> LLMKonfig:
         temperatur=float(os.getenv("LLM_TEMPERATUR", "0.9")),
         max_aufrufe=int(os.getenv("LLM_MAX_AUFRUFE", "400")),
         tool_choice=os.getenv("LLM_TOOL_CHOICE", "required"),
+        max_pro_minute=int(os.getenv("LLM_MAX_PRO_MINUTE", "0")),
     )
