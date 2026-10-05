@@ -166,3 +166,21 @@ def test_alte_diskussionen_fallen_weg_tode_bleiben() -> None:
     assert "Ben stimmt für Anna." in text
     assert "Neue Rede" in text
     assert "Alte Rede" not in text
+
+
+def test_partie_nur_mit_llm_spielern() -> None:
+    """Meilenstein 3: Alle Spieler sind LLM-Spieler mit eigener Persönlichkeit."""
+    client = FakeClient()
+    persoenlichkeiten = persoenlichkeiten_laden()
+    agenten: dict[str, Agent] = {
+        name: LLMSpieler(client, persoenlichkeiten[i]) for i, name in enumerate(NAMEN)
+    }
+    engine = Engine(agenten, rng=random.Random(0), rollen=ROLLEN)
+    engine.spielen()
+
+    # Jeder wurde gefragt, jeder mit seiner eigenen Persönlichkeit.
+    systeme = {system for system, _, _ in client.anfragen_liste}
+    for i, name in enumerate(NAMEN):
+        assert any(f"Du bist {name}" in s and persoenlichkeiten[i] in s for s in systeme)
+    # Der vernünftige Fake bleibt immer regelkonform.
+    assert not any("Zufallsaktion" in e.text for e in engine.protokoll)
