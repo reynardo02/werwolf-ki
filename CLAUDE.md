@@ -25,7 +25,9 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Tests: `.venv/bin/pytest`
 - Partie: `.venv/bin/python main.py --seed 1 --spieler 7`
 - Partie mit LLM: `.env` aus `.env.example` anlegen, dann `.venv/bin/python main.py --llm 1`
-  (`--llm alle` für eine reine LLM-Partie). Das Protokoll landet in `logs/partie_*.txt`.
+  (`--llm alle` für eine reine LLM-Partie). Protokoll und Log landen in `logs/partie_*.txt/.jsonl`.
+- Viele Partien: `.venv/bin/python main.py --partien 20` (mit `--llm …` kombinierbar)
+- Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand
 Meilenstein 1: Engine ohne KI – umgesetzt (Engine, Rollen, MockAgent, Tests).
@@ -36,4 +38,7 @@ werwolf/prompts/persoenlichkeiten.txt, gekürztes Gedächtnis über core/gedaech
 lesbares Protokoll über werwolf/protokoll.py, Tempolimit LLM_MAX_PRO_MINUTE).
 Mit `--llm alle` und gemini-3.5-flash-lite geprüft: Partie ohne API-Fehler, Werwölfe
 lügen öffentlich und planen in ihren Notizen, Dorfbewohner verdächtigen sich gegenseitig.
-Als Nächstes: Meilenstein 4, JSON-Logs und Auswertung über viele Partien.
+Meilenstein 4: Auswertung – umgesetzt (Ereignisse mit `art`/`daten`, JSONL-Log über
+werwolf/jsonl_log.py, Statistik über werwolf/auswertung.py, Skript auswerten.py).
+Offen: 20 LLM-Partien spielen und auswerten.
+Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
