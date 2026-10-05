@@ -83,12 +83,16 @@ def partie_spielen(
     szenario: str | None = None,
     mensch: str | None = None,
     mensch_spieler: Agent | None = None,
+    beobachter_extra: Callable[[Ereignis], None] | None = None,
+    konsole: bool = True,
 ) -> str:
     """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück.
 
     `mensch`: Name des Platzes, an dem du selbst per Tastatur spielst. Dann zeigt die
     Konsole nur, was öffentlich am Tisch passiert – Rollen und Geheimnisse stehen erst
     hinterher im Protokoll.
+    `beobachter_extra` bekommt zusätzlich jedes Ereignis (z. B. für die Web-Oberfläche),
+    `konsole=False` schaltet die Ausgabe auf der Konsole ab.
     """
     rng = random.Random(seed)
     namen = NAMEN[:anzahl_spieler]
@@ -125,10 +129,12 @@ def partie_spielen(
             typ_von[name] = "mock"
 
     # Spielst du selbst mit, darf die Konsole nichts Geheimes zeigen.
-    protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch else None)
+    protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch and konsole else None)
     # Die Engine hat einen Beobachter, wir verteilen an Protokoll und Log.
     beobachter: list[Callable[[Ereignis], None]] = [protokoll]
-    if mensch:
+    if beobachter_extra:
+        beobachter.append(beobachter_extra)
+    if mensch and konsole:
         tisch = Protokoll(ausgabe=print)
         beobachter.append(lambda e: tisch(e) if e.oeffentlich else None)
 
@@ -172,7 +178,7 @@ def partie_spielen(
     if "mitte" in kopf:
         besetzung.append(f"Mitte: {', '.join(kopf['mitte'])}")
     protokoll.kopf(titel, besetzung)
-    if mensch:
+    if mensch and konsole:
         andere = ", ".join(f"{n} ({'LLM' if typ_von[n] == 'llm' else 'MockAgent'})" for n in namen if n != mensch)
         print(f"{titel}\nDu spielst als {mensch}. Am Tisch: {andere}.")
 
