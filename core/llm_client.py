@@ -6,6 +6,7 @@ Nur diese Datei kennt das SDK – der Rest des Projekts sieht nur `LLMClient`.
 """
 
 import json
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -22,6 +23,27 @@ class LLMFehler(Exception):
 
 class BudgetErschoepft(Exception):
     """Das Limit an API-Aufrufen ist erreicht. Schützt vor unerwarteten Kosten."""
+
+
+class KontingentErschoepft(Exception):
+    """Der Anbieter sperrt für lange Zeit, z. B. weil das Tageslimit erreicht ist.
+
+    Absichtlich KEIN LLMFehler: Ein LLMFehler wird zur Zufallsaktion, hier soll
+    die Partie aber abbrechen, statt nur noch zufällig weiterzuspielen.
+    """
+
+
+# Länger als so viele Sekunden zu warten lohnt sich nicht, dann wird abgebrochen.
+MAX_WARTEZEIT = 300.0
+
+
+def wartezeit_aus_fehler(text: str) -> float | None:
+    """Liest aus einer 429-Meldung, wie lange der Anbieter sperrt (in Sekunden).
+
+    Gemini schreibt z. B. "retryDelay': '41195s'". Unbekanntes Format: None.
+    """
+    treffer = re.search(r"retryDelay\W+(\d+(?:\.\d+)?)s", text)
+    return float(treffer.group(1)) if treffer else None
 
 
 @dataclass
@@ -96,7 +118,12 @@ class OpenAIKompatiblerClient:
                 antwort = self.sdk.chat.completions.create(**anfrage)
                 break
             except openai.RateLimitError as fehler:
-                # Zu viele Anfragen: kurz warten, dann neu versuchen.
+                # Lange Sperre (z. B. Tageslimit): Warten bringt nichts, abbrechen.
+                sperre = wartezeit_aus_fehler(str(fehler))
+                if "PerDay" in str(fehler) or (sperre is not None and sperre > MAX_WARTEZEIT):
+                    self._fehler_melden(fehler)
+                    raise KontingentErschoepft(str(fehler)) from fehler
+                # Zu viele Anfragen pro Minute: kurz warten, dann neu versuchen.
                 if versuch == self.versuche_bei_limit:
                     raise self._fehler_melden(fehler) from fehler
                 self._warten(min(60.0, 10.0 * 2**versuch))

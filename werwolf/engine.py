@@ -106,7 +106,7 @@ class Engine:
         return None
 
     def _nacht(self) -> None:
-        self._melden(Phase.NACHT, f"Runde {self.runde} beginnt. Es wird Nacht.")
+        self._melden(Phase.NACHT, f"Runde {self.runde} beginnt. Es wird Nacht.", art="runde")
 
         # Werwölfe stimmen nacheinander ab, jeder sieht die Vorschläge der anderen.
         vorschlaege: list[str] = []
@@ -116,7 +116,10 @@ class Engine:
             aktion = self._fragen(wolf, Phase.NACHT, OPFER_WAEHLEN, opfer_kandidaten, extra)
             ziel = aktion.parameter["ziel"]
             vorschlaege.append(ziel)
-            self._melden(Phase.NACHT, f"{wolf.name} (Werwolf) wählt {ziel}.", oeffentlich=False)
+            self._melden(
+                Phase.NACHT, f"{wolf.name} (Werwolf) wählt {ziel}.", oeffentlich=False,
+                art="opfer_vorschlag", daten={"werwolf": wolf.name, "ziel": ziel},
+            )
             self._begruendung_melden(Phase.NACHT, wolf, aktion)
 
         # Mehrheit der Wolfsstimmen, bei Gleichstand entscheidet der Zufall.
@@ -130,17 +133,23 @@ class Engine:
                 f"Runde {self.runde}: {ziel.name} ist {ziel.rolle.value}."
             )
             self._melden(
-                Phase.NACHT, f"{seherin.name} (Seherin) prüft {ziel.name}.", oeffentlich=False
+                Phase.NACHT, f"{seherin.name} (Seherin) prüft {ziel.name}.", oeffentlich=False,
+                art="pruefung",
+                daten={"seherin": seherin.name, "ziel": ziel.name, "rolle": ziel.rolle.value},
             )
 
         # Morgen: Opfer wird verkündet und seine Rolle aufgedeckt.
-        self._toeten(Phase.MORGEN, opfer, "wurde in der Nacht von den Werwölfen getötet")
+        self._toeten(Phase.MORGEN, opfer, "wurde in der Nacht von den Werwölfen getötet", "nacht")
 
     def _diskussion(self) -> None:
         for _ in range(self.diskussionsrunden):
             for spieler in self._lebende_spieler():
                 aktion = self._fragen(spieler, Phase.DISKUSSION, SPRECHEN)
-                self._melden(Phase.DISKUSSION, f'{spieler.name}: "{aktion.parameter["text"]}"')
+                text = aktion.parameter["text"]
+                self._melden(
+                    Phase.DISKUSSION, f'{spieler.name}: "{text}"',
+                    art="rede", daten={"spieler": spieler.name, "text": text},
+                )
 
     def _abstimmung(self) -> None:
         stimmen: list[str] = []
@@ -149,27 +158,35 @@ class Engine:
             aktion = self._fragen(spieler, Phase.ABSTIMMUNG, ABSTIMMEN, kandidaten)
             ziel = aktion.parameter["ziel"]
             stimmen.append(ziel)
-            self._melden(Phase.ABSTIMMUNG, f"{spieler.name} stimmt für {ziel}.")
+            self._melden(
+                Phase.ABSTIMMUNG, f"{spieler.name} stimmt für {ziel}.",
+                art="stimme", daten={"von": spieler.name, "ziel": ziel},
+            )
             self._begruendung_melden(Phase.ABSTIMMUNG, spieler, aktion)
 
         # Nur eine eindeutige Mehrheit (meiste Stimmen) scheidet aus.
         verurteilt = self._mehrheit(stimmen)
         if verurteilt is None:
-            self._melden(Phase.ABSTIMMUNG, "Gleichstand – niemand scheidet aus.")
+            self._melden(Phase.ABSTIMMUNG, "Gleichstand – niemand scheidet aus.", art="gleichstand")
         else:
-            self._toeten(Phase.ABSTIMMUNG, verurteilt, "wurde vom Dorf hingerichtet")
+            self._toeten(Phase.ABSTIMMUNG, verurteilt, "wurde vom Dorf hingerichtet", "abstimmung")
 
     def _rundenende(self) -> None:
         for spieler in self._lebende_spieler():
             aktion = self._fragen(spieler, Phase.RUNDENENDE, NOTIZ_SCHREIBEN)
-            spieler.notizen.append(f"Runde {self.runde}: {aktion.parameter['text']}")
+            text = aktion.parameter["text"]
+            spieler.notizen.append(f"Runde {self.runde}: {text}")
             # Notizen sind privat, im Protokoll zeigen sie, was ein Spieler wirklich denkt.
             self._melden(
-                Phase.RUNDENENDE, f"Notiz {spieler.name}: {aktion.parameter['text']}", oeffentlich=False
+                Phase.RUNDENENDE, f"Notiz {spieler.name}: {text}", oeffentlich=False,
+                art="notiz", daten={"spieler": spieler.name, "text": text},
             )
 
     def _ende(self, gewinner: Team) -> Ergebnis:
-        self._melden(Phase.SPIELENDE, f"Spielende: {gewinner.value} gewinnen!")
+        self._melden(
+            Phase.SPIELENDE, f"Spielende: {gewinner.value} gewinnen!",
+            art="spielende", daten={"gewinner": gewinner.value},
+        )
         return Ergebnis(gewinner, self.runde, [s.name for s in self._lebende_spieler()])
 
     # ------------------------------------------------------------------
@@ -208,9 +225,15 @@ class Engine:
             hinweis = self._pruefen(aktion, tool, gueltige_ziele or [])
             if hinweis is None:
                 return aktion
-            self._melden(phase, f"Ungültige Aktion von {spieler.name}: {hinweis}", oeffentlich=False)
+            self._melden(
+                phase, f"Ungültige Aktion von {spieler.name}: {hinweis}", oeffentlich=False,
+                art="ungueltig", daten={"spieler": spieler.name, "fehler": hinweis},
+            )
 
-        self._melden(phase, f"{spieler.name} bekommt eine Zufallsaktion.", oeffentlich=False)
+        self._melden(
+            phase, f"{spieler.name} bekommt eine Zufallsaktion.", oeffentlich=False,
+            art="zufallsaktion", daten={"spieler": spieler.name, "tool": tool},
+        )
         return self._zufallsaktion(tool, gueltige_ziele or [])
 
     @staticmethod
@@ -251,12 +274,18 @@ class Engine:
 
     def _begruendung_melden(self, phase: Phase, spieler: Spieler, aktion: Aktion) -> None:
         if begruendung := aktion.parameter.get("begruendung"):
-            self._melden(phase, f"Begründung {spieler.name}: {begruendung}", oeffentlich=False)
+            self._melden(
+                phase, f"Begründung {spieler.name}: {begruendung}", oeffentlich=False,
+                art="begruendung", daten={"spieler": spieler.name, "text": str(begruendung)},
+            )
 
-    def _toeten(self, phase: Phase, name: str, grund: str) -> None:
+    def _toeten(self, phase: Phase, name: str, grund: str, ursache: str) -> None:
         spieler = self.spieler[name]
         spieler.lebendig = False
-        self._melden(phase, f"{name} {grund}. {name} war {spieler.rolle.value}.")
+        self._melden(
+            phase, f"{name} {grund}. {name} war {spieler.rolle.value}.",
+            art="tod", daten={"name": name, "rolle": spieler.rolle.value, "ursache": ursache},
+        )
 
     @staticmethod
     def _spitzenreiter(stimmen: list[str]) -> list[str]:
@@ -270,8 +299,15 @@ class Engine:
         spitze = self._spitzenreiter(stimmen)
         return spitze[0] if len(spitze) == 1 else None
 
-    def _melden(self, phase: Phase, text: str, oeffentlich: bool = True) -> None:
-        ereignis = Ereignis(self.runde, phase, text, oeffentlich)
+    def _melden(
+        self,
+        phase: Phase,
+        text: str,
+        oeffentlich: bool = True,
+        art: str = "info",
+        daten: dict[str, str] | None = None,
+    ) -> None:
+        ereignis = Ereignis(self.runde, phase, text, oeffentlich, art, daten or {})
         self.protokoll.append(ereignis)
         if self.beobachter:
             self.beobachter(ereignis)

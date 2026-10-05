@@ -11,7 +11,13 @@ import openai
 import pytest
 
 from core.konfig import konfig_laden
-from core.llm_client import BudgetErschoepft, LLMFehler, OpenAIKompatiblerClient
+from core.llm_client import (
+    BudgetErschoepft,
+    KontingentErschoepft,
+    LLMFehler,
+    OpenAIKompatiblerClient,
+    wartezeit_aus_fehler,
+)
 from core.tools import ToolSchema
 
 TOOL = ToolSchema("abstimmen", "Stimme ab.", {"ziel": {"type": "string"}}, ("ziel",))
@@ -205,3 +211,35 @@ def test_konfig_liest_tempolimit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_API_KEY", "geheim")
     monkeypatch.setenv("LLM_MAX_PRO_MINUTE", "14")
     assert konfig_laden(env_datei=None).max_pro_minute == 14
+
+
+def tageslimit(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(429, json=[{"error": {
+        "code": 429,
+        "message": "Quota exceeded, quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+        "details": [{"retryDelay": "41195s"}],
+    }}])
+
+
+def test_tageslimit_bricht_sofort_ab() -> None:
+    uhr = FakeUhr()
+    client, gesendet = client_mit(tageslimit, uhr=uhr, schlafen=uhr.schlafen)
+    with pytest.raises(KontingentErschoepft):
+        client.anfragen("S", "N", [TOOL])
+    assert len(gesendet) == 1  # kein erneuter Versuch
+    assert uhr.pausen == []  # und kein Warten
+    assert client.statistik.fehler == 1
+
+
+def test_kontingent_ist_kein_llmfehler() -> None:
+    # Sonst würde der LLMSpieler daraus still eine Zufallsaktion machen.
+    assert not issubclass(KontingentErschoepft, LLMFehler)
+
+
+@pytest.mark.parametrize("text, sekunden", [
+    ("'retryDelay': '41195s'", 41195.0),
+    ('"retryDelay": "0.5s"', 0.5),
+    ("Please retry later", None),
+])
+def test_wartezeit_aus_fehler(text: str, sekunden: float | None) -> None:
+    assert wartezeit_aus_fehler(text) == sekunden
