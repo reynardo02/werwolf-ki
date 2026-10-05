@@ -64,5 +64,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   20 Partien ab Seed 443803: 43,5 % (Zufall 25,9 %), Dorf gewinnt 8/20. Übernommen.
   Stimmen gegen Start-Werwölfe 44,4 % – die Lücke zur Endkarte ist geschlossen.
   Siege 1/10 → 8/20 ist allein noch nicht sicher (Fisher-Test p ≈ 0,1), die Stimmen sind deutlicher.
-- Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
+  Restfehler (Logs 6–10): Raubt der Räuber die Unruhestifterin und tauscht sie danach, hält das
+  Dorf das weiter für einen Widerspruch; manche Siege kamen über „lenkt ab“ statt über Logik.
+- Ideen: Nachtreihenfolge der Rollen in den Prompt; Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
