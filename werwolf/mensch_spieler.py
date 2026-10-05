@@ -28,6 +28,7 @@ from werwolf.vollmondnacht.engine import (
     SPIELER_ANSEHEN,
     VERTAUSCHEN,
 )
+from werwolf.vollmondnacht.rollen import Rolle as VollmondRolle
 
 # Was jedes Tool am Tisch bedeutet, für das Auswahlmenü.
 BESCHRIFTUNG = {
@@ -64,7 +65,9 @@ class MenschSpieler:
 
     def _lage_zeigen(self, zug: Zug) -> None:
         self.ausgabe("")
-        self.ausgabe(f">>> {zug.ich}, du bist dran ({zug.phase.value}). Deine Karte zu Beginn: {zug.rolle.value}")
+        # In der Vollmondnacht kann deine Karte nachts getauscht werden, daher „zu Beginn“.
+        rolle = "Deine Karte zu Beginn" if isinstance(zug.rolle, VollmondRolle) else "Deine Rolle"
+        self.ausgabe(f">>> {zug.ich}, du bist dran ({zug.phase.value}). {rolle}: {zug.rolle.value}")
         # Nur Neues zeigen, sonst wiederholt sich das Wissen bei jedem Zug.
         neu = [w for w in zug.geheimwissen if w not in self._gezeigt]
         for wissen in neu:

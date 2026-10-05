@@ -35,6 +35,8 @@ def partie_aus_log(zeilen: list[dict[str, Any]]) -> VollmondPartie:
     ende = next((z for z in zeilen if z["art"] in ("ergebnis", "abbruch")), {})
     llm = sum(1 for s in kopf["spieler"] if s["typ"] == "llm")
     modell = f"{kopf.get('modell')} ({llm}/{len(kopf['spieler'])} LLM)" if llm else "nur MockAgenten"
+    if any(s["typ"] == "mensch" for s in kopf["spieler"]):
+        modell += ", mit Mensch"  # getrennt halten, sonst verfälscht es die Experimente
     return VollmondPartie(
         gruppe=f"{kopf.get('szenario')}, {modell}",
         startrollen={s["name"]: s["rolle"] for s in kopf["spieler"]},

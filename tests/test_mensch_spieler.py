@@ -88,3 +88,21 @@ def test_klassische_partie_mit_mensch() -> None:
     Engine(agenten, rng=random.Random(3), beobachter=ereignisse.append).spielen()
     assert tastatur.fragen  # Anna wurde gefragt
     assert not [e for e in ereignisse if e.daten.get("spieler") == "Anna" and e.art == "ungueltig"]
+
+
+def test_partie_mit_mensch_verraet_keine_geheimnisse(tmp_path, capsys) -> None:
+    from main import VOLLMONDNACHT, partie_spielen
+    from werwolf.jsonl_log import log_lesen
+
+    mensch = MenschSpieler(Tastatur(), print)
+    partie_spielen(5, 5, 0, None, "m", ausfuehrlich=True, ordner=tmp_path,
+                   regeln=VOLLMONDNACHT, mensch="Ben", mensch_spieler=mensch)
+    ausgabe = capsys.readouterr().out
+    assert "Du spielst als Ben" in ausgabe
+    assert "[geheim]" not in ausgabe and "Mitte:" not in ausgabe  # keine Besetzung, keine Nachtaktionen
+    assert "Startkarte" in ausgabe  # Aufdecken am Ende ist öffentlich
+    kopf = log_lesen(tmp_path / "m.jsonl")[0]
+    assert {s["name"]: s["typ"] for s in kopf["spieler"]}["Ben"] == "mensch"
+    from werwolf.vollmondnacht.auswertung import partie_aus_log
+    assert partie_aus_log(log_lesen(tmp_path / "m.jsonl")).gruppe.endswith("mit Mensch")
+    assert "[geheim]" in (tmp_path / "m.txt").read_text(encoding="utf-8")  # Protokoll bleibt vollständig

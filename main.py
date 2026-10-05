@@ -23,6 +23,7 @@ from core.llm_client import (
 from werwolf.engine import Engine, Ergebnis
 from werwolf.jsonl_log import JsonlLog
 from werwolf.llm_spieler import LLMSpieler, persoenlichkeiten_laden
+from werwolf.mensch_spieler import MenschSpieler
 from werwolf.mock_agent import MockAgent
 from werwolf.protokoll import Protokoll
 from werwolf.schnittstelle import Agent, Ereignis
@@ -80,8 +81,15 @@ def partie_spielen(
     ordner: Path = LOGS,
     regeln: str = KLASSISCH,
     szenario: str | None = None,
+    mensch: str | None = None,
+    mensch_spieler: Agent | None = None,
 ) -> str:
-    """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück."""
+    """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück.
+
+    `mensch`: Name des Platzes, an dem du selbst per Tastatur spielst. Dann zeigt die
+    Konsole nur, was öffentlich am Tisch passiert – Rollen und Geheimnisse stehen erst
+    hinterher im Protokoll.
+    """
     rng = random.Random(seed)
     namen = NAMEN[:anzahl_spieler]
     if client:
@@ -96,19 +104,33 @@ def partie_spielen(
     llm_klasse = VollmondLLMSpieler if regeln == VOLLMONDNACHT else LLMSpieler
     agenten: dict[str, Agent] = {}
     persoenlichkeit_von: dict[str, str | None] = {}
-    for i, name in enumerate(namen):
-        if client and i < anzahl_llm:
+    typ_von: dict[str, str] = {}
+    llm_vergeben = 0
+    for name in namen:
+        if name == mensch:
+            agenten[name] = mensch_spieler or MenschSpieler()
+            persoenlichkeit_von[name] = None
+            typ_von[name] = "mensch"
+        elif client and llm_vergeben < anzahl_llm:
             # Eigener Zufall pro Spieler aus Seed und Name: verbraucht nichts vom
             # Zufall der Partie, gleiche Seeds verteilen also gleiche Karten.
-            agenten[name] = llm_klasse(client, persoenlichkeiten[i], rng=random.Random(f"{seed}-{name}"))
-            persoenlichkeit_von[name] = persoenlichkeiten[i]
+            persoenlichkeit = persoenlichkeiten[llm_vergeben]
+            agenten[name] = llm_klasse(client, persoenlichkeit, rng=random.Random(f"{seed}-{name}"))
+            persoenlichkeit_von[name] = persoenlichkeit
+            typ_von[name] = "llm"
+            llm_vergeben += 1
         else:
             agenten[name] = MockAgent(random.Random(rng.random()))
             persoenlichkeit_von[name] = None
+            typ_von[name] = "mock"
 
-    protokoll = Protokoll(ausgabe=print if ausfuehrlich else None)
+    # Spielst du selbst mit, darf die Konsole nichts Geheimes zeigen.
+    protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch else None)
     # Die Engine hat einen Beobachter, wir verteilen an Protokoll und Log.
     beobachter: list[Callable[[Ereignis], None]] = [protokoll]
+    if mensch:
+        tisch = Protokoll(ausgabe=print)
+        beobachter.append(lambda e: tisch(e) if e.oeffentlich else None)
 
     def beobachten(ereignis: Ereignis) -> None:
         for b in beobachter:
@@ -125,7 +147,7 @@ def partie_spielen(
             {
                 "name": name,
                 "rolle": rolle_von[name],
-                "typ": "llm" if persoenlichkeit_von[name] else "mock",
+                "typ": typ_von[name],
                 "persoenlichkeit": persoenlichkeit_von[name],
             }
             for name in namen
@@ -142,13 +164,17 @@ def partie_spielen(
         titel += f" – Szenario: {szenario}"
     if modell:
         titel += f" – Modell: {modell}"
+    art_von = {"mensch": "Mensch", "mock": "MockAgent"}
     besetzung = [
-        f"{n}: {rolle_von[n]} ({f'LLM, {persoenlichkeit_von[n]}' if persoenlichkeit_von[n] else 'MockAgent'})"
+        f"{n}: {rolle_von[n]} ({f'LLM, {persoenlichkeit_von[n]}' if typ_von[n] == 'llm' else art_von[typ_von[n]]})"
         for n in namen
     ]
     if "mitte" in kopf:
         besetzung.append(f"Mitte: {', '.join(kopf['mitte'])}")
     protokoll.kopf(titel, besetzung)
+    if mensch:
+        andere = ", ".join(f"{n} ({'LLM' if typ_von[n] == 'llm' else 'MockAgent'})" for n in namen if n != mensch)
+        print(f"{titel}\nDu spielst als {mensch}. Am Tisch: {andere}.")
 
     try:
         kurz, zeilen, daten = ergebnis_zusammenfassen(engine.spielen())
@@ -209,6 +235,10 @@ def main() -> None:
         "--llm", default="0", help="Wie viele Spieler das LLM steuert, Zahl oder 'alle' (Rest: MockAgent)"
     )
     parser.add_argument("--partien", type=int, default=1, help="Wie viele Partien nacheinander")
+    parser.add_argument(
+        "--mensch", nargs="?", const=NAMEN[0], default=None, metavar="NAME",
+        help=f"Selbst mitspielen per Tastatur, optional mit Platz-Name (Standard: {NAMEN[0]})",
+    )
     args = parser.parse_args()
 
     minimum, maximum = SPIELERZAHL[args.regeln]
@@ -222,9 +252,13 @@ def main() -> None:
                 f"Szenario '{args.szenario}' gibt es nicht für {args.spieler} Spieler. "
                 f"Möglich: {', '.join(szenario_namen(args.spieler))}"
             )
-    anzahl_llm = args.spieler if args.llm == "alle" else int(args.llm) if args.llm.isdigit() else -1
-    if not 0 <= anzahl_llm <= args.spieler:
-        parser.error("--llm muss 'alle' oder eine Zahl zwischen 0 und --spieler sein")
+    if args.mensch is not None and args.mensch not in NAMEN[:args.spieler]:
+        parser.error(f"--mensch: Name muss einer von {', '.join(NAMEN[:args.spieler])} sein")
+    # Mit dir am Tisch bleibt ein Platz weniger für das LLM.
+    plaetze = args.spieler - (args.mensch is not None)
+    anzahl_llm = plaetze if args.llm == "alle" else int(args.llm) if args.llm.isdigit() else -1
+    if not 0 <= anzahl_llm <= plaetze:
+        parser.error(f"--llm muss 'alle' oder eine Zahl zwischen 0 und {plaetze} sein")
     if args.partien < 1:
         parser.error("--partien muss mindestens 1 sein")
 
@@ -244,7 +278,7 @@ def main() -> None:
         try:
             kurz = partie_spielen(
                 seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich,
-                regeln=args.regeln, szenario=args.szenario,
+                regeln=args.regeln, szenario=args.szenario, mensch=args.mensch,
             )
         except (KontingentErschoepft, KeyboardInterrupt) as fehler:
             if isinstance(fehler, KontingentErschoepft):
@@ -259,7 +293,9 @@ def main() -> None:
                 f"--spieler {args.spieler} --partien {args.partien - i} --seed {seed}"
             )
             break
-        if not ausfuehrlich:
+        if args.mensch:
+            print(f"\nErgebnis: {kurz}. Alle Geheimnisse stehen im Protokoll: logs/{dateiname}.txt")
+        elif not ausfuehrlich:
             print(f"Partie {i + 1}/{args.partien} (Seed {seed}): {kurz}")
 
     print(f"\nLogs gespeichert in {LOGS}/partie_{zeitstempel}*")

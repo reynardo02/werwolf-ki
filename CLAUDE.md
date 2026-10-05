@@ -31,6 +31,8 @@ wird später für eine Agenten-Simulation wiederverwendet.
   (`--llm alle` für eine reine LLM-Partie). Protokoll und Log landen in `logs/partie_*.txt/.jsonl`.
 - Viele Partien: `.venv/bin/python main.py --partien 20` (mit `--llm …` kombinierbar)
 - Vollmondnacht: `.venv/bin/python main.py --regeln vollmondnacht --spieler 7 [--szenario Payback]`
+- Selbst mitspielen: `.venv/bin/python main.py --regeln vollmondnacht --mensch [NAME] --llm alle`
+  (Konsole zeigt nur Öffentliches, Geheimnisse danach im Protokoll)
 - Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand
@@ -48,6 +50,8 @@ Mit 12 LLM-Partien geprüft: Werwölfe gewinnen alle, das Dorf stimmt bei der ö
 Reihum-Abstimmung schlechter als Zufall (Herdenverhalten).
 Zusatz: Spielvariante Vollmondnacht – umgesetzt (alle 12 Rollen inkl. Doppelgängerin,
 alle Szenarien, VollmondLLMSpieler, eigene Auswertung).
+Meilenstein 5, Teil 1: Selbst mitspielen – umgesetzt (werwolf/mensch_spieler.py, `--mensch`,
+beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe).
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
@@ -75,4 +79,4 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   (Tauscher, Seherin, Schlaflose), 3× Kartenweg übersehen, 2× einfacher Dorfbewohner.
   Prompt-Hinweise stoßen bei gemini-3.5-flash-lite an Grenzen.
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
-Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
+Als Nächstes: Meilenstein 5, Teil 2: Web-Oberfläche.
