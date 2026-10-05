@@ -57,6 +57,10 @@ def main() -> None:
     if client:
         st = client.statistik
         print(f"API: {st.aufrufe} Aufrufe, {st.input_tokens} Input- / {st.output_tokens} Output-Tokens")
+        if st.fehler or st.ohne_tool_call:
+            print(f"Achtung: {st.fehler} API-Fehler, {st.ohne_tool_call} Antworten ohne Tool-Call.")
+        if st.letzter_fehler:
+            print(f"Letzter Fehler: {st.letzter_fehler}")
 
 
 if __name__ == "__main__":

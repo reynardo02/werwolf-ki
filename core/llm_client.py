@@ -33,6 +33,9 @@ class Statistik:
     aufrufe: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    fehler: int = 0  # Aufrufe, bei denen der Anbieter einen Fehler gemeldet hat
+    ohne_tool_call: int = 0  # Antworten ohne (lesbaren) Tool-Call
+    letzter_fehler: str = ""
 
 
 class LLMClient(Protocol):
@@ -77,6 +80,8 @@ class OpenAIKompatiblerClient:
                 tool_choice=self.tool_choice,
             )
         except openai.OpenAIError as fehler:
+            self.statistik.fehler += 1
+            self.statistik.letzter_fehler = str(fehler)
             raise LLMFehler(str(fehler)) from fehler
 
         if antwort.usage:
@@ -84,9 +89,13 @@ class OpenAIKompatiblerClient:
             self.statistik.output_tokens += antwort.usage.completion_tokens or 0
 
         if not antwort.choices:
+            self.statistik.ohne_tool_call += 1
             return Antwort(None)
         nachricht_llm = antwort.choices[0].message
-        return Antwort(_ersten_tool_call_lesen(nachricht_llm.tool_calls), nachricht_llm.content or "")
+        tool_call = _ersten_tool_call_lesen(nachricht_llm.tool_calls)
+        if tool_call is None:
+            self.statistik.ohne_tool_call += 1
+        return Antwort(tool_call, nachricht_llm.content or "")
 
 
 def _ersten_tool_call_lesen(tool_calls: list[Any] | None) -> ToolCall | None:

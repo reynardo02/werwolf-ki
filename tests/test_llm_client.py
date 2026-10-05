@@ -84,12 +84,15 @@ def test_kein_oder_kaputter_tool_call(tool_calls) -> None:
     antwort = client.anfragen("S", "N", [TOOL])
     assert antwort.tool_call is None
     assert antwort.text == "Hallo"
+    assert client.statistik.ohne_tool_call == 1
 
 
 def test_serverfehler_wird_zu_llmfehler() -> None:
     client, _ = client_mit(lambda r: httpx.Response(500, json={"error": {"message": "kaputt"}}))
     with pytest.raises(LLMFehler):
         client.anfragen("S", "N", [TOOL])
+    assert client.statistik.fehler == 1
+    assert "kaputt" in client.statistik.letzter_fehler
 
 
 def test_budget_stoppt_weitere_aufrufe() -> None:
