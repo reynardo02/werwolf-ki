@@ -1,7 +1,9 @@
 """Statistiken über viele Vollmondnacht-Partien, berechnet aus den JSONL-Logs.
 
 Wichtig: Gezählt wird mit den Endkarten. Wer nachts zum Werwolf getauscht wurde,
-gilt als Werwolf – so entscheidet es auch die Siegbedingung.
+gilt als Werwolf – so entscheidet es auch die Siegbedingung. Zusätzlich zählen wir Stimmen
+gegen Start-Werwölfe: Liegen die viel höher, erkennt das Dorf die Lügner, verfolgt aber
+nicht, wohin ihre Karte getauscht wurde.
 """
 
 from collections import Counter
@@ -60,6 +62,7 @@ class VollmondAuswertung:
     werwolf_erwischt: int = 0
     dorf_stimmen: int = 0
     dorf_stimmen_werwolf: int = 0
+    dorf_stimmen_startwerwolf: int = 0
     dorf_stimmen_erwartet_zufall: float = 0.0
     spieler: int = 0
     partei_gewechselt: int = 0
@@ -85,6 +88,7 @@ def _zaehlen(a: VollmondAuswertung, p: VollmondPartie) -> None:
     a.niemand_stirbt += not p.tote
 
     woelfe = {n for n, r in p.endrollen.items() if r == WERWOLF}
+    startwoelfe = {n for n, r in p.startrollen.items() if r == WERWOLF}
     if woelfe:
         a.partien_mit_werwolf += 1
         a.werwolf_erwischt += bool(woelfe & set(p.tote))
@@ -96,6 +100,7 @@ def _zaehlen(a: VollmondAuswertung, p: VollmondPartie) -> None:
             continue
         a.dorf_stimmen += 1
         a.dorf_stimmen_werwolf += ziel in woelfe
+        a.dorf_stimmen_startwerwolf += ziel in startwoelfe
         # Zufällig zeigen: trifft einen Werwolf mit (Werwölfe) / (alle anderen).
         a.dorf_stimmen_erwartet_zufall += len(woelfe - {von}) / (len(p.endrollen) - 1)
 
@@ -125,6 +130,8 @@ def bericht(a: VollmondAuswertung, titel: str) -> str:
         _zeile("  Stimmen gegen Werwölfe", _prozent(
             quote(a.dorf_stimmen_werwolf, a.dorf_stimmen),
             f"(Zufall wäre {_prozent(quote(a.dorf_stimmen_erwartet_zufall, a.dorf_stimmen)).strip()})")),
+        _zeile("  Stimmen gegen Start-Werwölfe", _prozent(
+            quote(a.dorf_stimmen_startwerwolf, a.dorf_stimmen), "(Werwolf-Karte zu Spielbeginn)")),
         "",
         _zeile("Partei nachts gewechselt", _prozent(
             quote(a.partei_gewechselt, a.spieler), f"({a.partei_gewechselt} von {a.spieler} Spielern)")),
