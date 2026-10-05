@@ -25,10 +25,13 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Tests: `.venv/bin/pytest`
 - Partie: `.venv/bin/python main.py --seed 1 --spieler 7`
 - Partie mit LLM: `.env` aus `.env.example` anlegen, dann `.venv/bin/python main.py --llm 1`
+  (`--llm alle` für eine reine LLM-Partie). Das Protokoll landet in `logs/partie_*.txt`.
 
 ## Aktueller Stand
 Meilenstein 1: Engine ohne KI – umgesetzt (Engine, Rollen, MockAgent, Tests).
 Meilenstein 2: Erster LLM-Agent – umgesetzt (LLM-Client, Tool-Schemas, LLMSpieler,
 Konfiguration über .env, Budget-Limit, Tests mit Fake-Client).
-Als Nächstes: Meilenstein 3, alle Spieler als LLM, Persönlichkeiten, Gedächtnis kürzen,
-lesbares Spielprotokoll.
+Meilenstein 3: Alle Agenten als LLM – umgesetzt (Persönlichkeiten in
+werwolf/prompts/persoenlichkeiten.txt, gekürztes Gedächtnis über core/gedaechtnis.py,
+lesbares Protokoll über werwolf/protokoll.py). Offen: echte Partie mit `--llm alle` prüfen.
+Als Nächstes: Meilenstein 4, JSON-Logs und Auswertung über viele Partien.

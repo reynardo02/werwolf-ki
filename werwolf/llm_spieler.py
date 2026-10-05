@@ -28,8 +28,9 @@ PROMPTS = Path(__file__).parent / "prompts"
 
 ROLLEN_HINWEISE = {
     Rolle.WERWOLF: (
-        "Du darfst lügen und bluffen. Verrate niemals, dass du ein Werwolf bist, "
-        "und lenke den Verdacht auf andere."
+        "Du darfst lügen und bluffen, auch eine falsche Rolle behaupten. Verrate niemals, "
+        "dass du ein Werwolf bist, lenke den Verdacht auf andere und schütze deinen "
+        "Mitwolf, ohne dass es auffällt."
     ),
     Rolle.SEHERIN: (
         "Dein Wissen ist wertvoll, aber wenn du dich zu früh zu erkennen gibst, "
@@ -44,11 +45,19 @@ ZIELE = {
 }
 
 AUFGABEN = {
-    SPRECHEN: "Diskussion: Du bist dran. Nutze das Tool sprechen.",
+    SPRECHEN: (
+        "Diskussion: Du bist dran. Geh auf das Gesagte ein: Äußere einen konkreten Verdacht, "
+        "verteidige dich oder stell jemandem eine Frage. Wiederhole dich nicht. "
+        "Nutze das Tool sprechen."
+    ),
     ABSTIMMEN: "Abstimmung: Wen soll das Dorf hinrichten? Nutze das Tool abstimmen.",
     OPFER_WAEHLEN: "Nacht: Wählt euer Opfer. Nutze das Tool opfer_waehlen.",
     PRUEFEN: "Nacht: Wen willst du prüfen? Nutze das Tool pruefen.",
-    NOTIZ_SCHREIBEN: "Die Runde ist vorbei. Halte deine Einschätzung fest. Nutze das Tool notiz_schreiben.",
+    NOTIZ_SCHREIBEN: (
+        "Die Runde ist vorbei. Die Diskussion dieser Runde siehst du später nicht mehr, "
+        "nur diese Notiz. Halte fest, wem du traust, wen du verdächtigst und warum. "
+        "Nutze das Tool notiz_schreiben."
+    ),
 }
 
 
