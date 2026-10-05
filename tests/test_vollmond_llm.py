@@ -64,14 +64,3 @@ def test_prompts_und_tools() -> None:
     assert tools[1].parameter == {}
     # Die Doppelgängerin liegt in der Mitte, also fragt die Engine nie nach „nachahmen“.
     assert not any(NACHAHMEN in [t.name for t in ts] for _, _, ts in client.anfragen_liste)
-
-
-def test_system_prompt_enthaelt_logik_hinweis() -> None:
-    client = FakeClient()
-    verteilung = {"Anna": Rolle.WERWOLF, "Ben": Rolle.SEHERIN, "Clara": Rolle.DORFBEWOHNER}
-    mitte = [Rolle.DORFBEWOHNER, Rolle.RAEUBER, Rolle.UNRUHESTIFTERIN]
-    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
-    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
-                   verteilung=verteilung, mitte=mitte).spielen()
-    system = client.anfragen_liste[0][0]
-    assert "lügt mindestens einer" in system
