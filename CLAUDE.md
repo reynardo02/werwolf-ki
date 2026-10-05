@@ -47,5 +47,15 @@ werwolf/jsonl_log.py, Statistik über werwolf/auswertung.py, Skript auswerten.py
 Mit 12 LLM-Partien geprüft: Werwölfe gewinnen alle, das Dorf stimmt bei der öffentlichen
 Reihum-Abstimmung schlechter als Zufall (Herdenverhalten).
 Zusatz: Spielvariante Vollmondnacht – umgesetzt (alle 12 Rollen inkl. Doppelgängerin,
-alle Szenarien, VollmondLLMSpieler, eigene Auswertung). Offen: echte LLM-Partien prüfen.
+alle Szenarien, VollmondLLMSpieler, eigene Auswertung).
+
+## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
+Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
+- Serie 1, Ausgangspunkt: 27,3 %, Dorf gewinnt 2/10.
+- Serie 2, Logik-Hinweis „doppelte Rollenbehauptung = Lüge“: 12,7 %, 0/10. Verworfen:
+  Das Dorf hielt ehrliche Kartentauscher für Lügner, Werwölfe nutzten den Hinweis aus.
+- Serie 3, Lügen nur für Werwolf/Günstling/Gerber, Ehrlichkeit fürs Dorf: 47,3 %, 4/10. Übernommen.
+  Hauptfehler danach: Das Dorf verfolgt nicht, wohin eine Werwolf-Karte getauscht wurde.
+- Positions-Verzerrung behoben (LLMs wählten meist den ersten Namen); Kontrollserie offen.
+- Ideen: Hinweis zum Kartenweg fürs Dorf; Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
