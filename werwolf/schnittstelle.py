@@ -19,6 +19,7 @@ class Phase(Enum):
     DISKUSSION = "Diskussion"
     ABSTIMMUNG = "Abstimmung"
     RUNDENENDE = "Rundenende"
+    SPIELENDE = "Spielende"
 
 
 # Namen der Tools, wie sie später auch das LLM sieht.
@@ -65,6 +66,7 @@ class Zug:
     notizen: list[str]
     ereignisse: list[Ereignis]
     hinweis: str | None = None  # Fehlermeldung, falls der erste Versuch ungültig war
+    ziele: list[str] = field(default_factory=list)  # gültige Ziele, leer bei Text-Tools
 
 
 class Agent(Protocol):

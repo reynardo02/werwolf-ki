@@ -7,7 +7,7 @@ Dein Geheimwissen:
 Deine Notizen aus früheren Runden:
 {notizen}
 
-Bisheriger Spielverlauf:
+Spielverlauf (ältere Diskussionen kennst du nur aus deinen Notizen):
 {ereignisse}
 
 {aufgabe}

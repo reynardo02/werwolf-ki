@@ -184,3 +184,12 @@ def test_agenten_sehen_keine_geheimen_ereignisse() -> None:
     for zug in beobachter.zuege:
         assert all(e.oeffentlich for e in zug.ereignisse)
         assert not any("Werwolf) wählt" in e.text for e in zug.ereignisse)
+
+
+def test_notizen_und_begruendungen_nur_im_geheimen_protokoll() -> None:
+    engine = mock_engine(7)
+    engine.spielen()
+    geheim = [e.text for e in engine.protokoll if not e.oeffentlich]
+    assert any(t.startswith("Notiz ") for t in geheim)
+    assert any(t.startswith("Begründung ") for t in geheim)
+    assert not any(e.text.startswith(("Notiz ", "Begründung ")) for e in engine.protokoll if e.oeffentlich)

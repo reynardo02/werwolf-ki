@@ -9,6 +9,7 @@ dieses Modul kein SDK und lässt sich mit einem Fake-Client testen.
 
 from pathlib import Path
 
+from core.gedaechtnis import Erinnerung, kontext_auswaehlen
 from core.llm_client import LLMClient, LLMFehler
 from werwolf.roles import Rolle, Team
 from werwolf.schnittstelle import (
@@ -18,6 +19,7 @@ from werwolf.schnittstelle import (
     PRUEFEN,
     SPRECHEN,
     Aktion,
+    Phase,
     Zug,
 )
 from werwolf.werkzeuge import tool_schemas
@@ -26,8 +28,9 @@ PROMPTS = Path(__file__).parent / "prompts"
 
 ROLLEN_HINWEISE = {
     Rolle.WERWOLF: (
-        "Du darfst lügen und bluffen. Verrate niemals, dass du ein Werwolf bist, "
-        "und lenke den Verdacht auf andere."
+        "Du darfst lügen und bluffen, auch eine falsche Rolle behaupten. Verrate niemals, "
+        "dass du ein Werwolf bist, lenke den Verdacht auf andere und schütze deinen "
+        "Mitwolf, ohne dass es auffällt."
     ),
     Rolle.SEHERIN: (
         "Dein Wissen ist wertvoll, aber wenn du dich zu früh zu erkennen gibst, "
@@ -42,12 +45,26 @@ ZIELE = {
 }
 
 AUFGABEN = {
-    SPRECHEN: "Diskussion: Du bist dran. Nutze das Tool sprechen.",
+    SPRECHEN: (
+        "Diskussion: Du bist dran. Geh auf das Gesagte ein: Äußere einen konkreten Verdacht, "
+        "verteidige dich oder stell jemandem eine Frage. Wiederhole dich nicht. "
+        "Nutze das Tool sprechen."
+    ),
     ABSTIMMEN: "Abstimmung: Wen soll das Dorf hinrichten? Nutze das Tool abstimmen.",
     OPFER_WAEHLEN: "Nacht: Wählt euer Opfer. Nutze das Tool opfer_waehlen.",
     PRUEFEN: "Nacht: Wen willst du prüfen? Nutze das Tool pruefen.",
-    NOTIZ_SCHREIBEN: "Die Runde ist vorbei. Halte deine Einschätzung fest. Nutze das Tool notiz_schreiben.",
+    NOTIZ_SCHREIBEN: (
+        "Die Runde ist vorbei. Die Diskussion dieser Runde siehst du später nicht mehr, "
+        "nur diese Notiz. Halte fest, wem du traust, wen du verdächtigst und warum. "
+        "Nutze das Tool notiz_schreiben."
+    ),
 }
+
+
+def persoenlichkeiten_laden() -> list[str]:
+    """Liest die Persönlichkeiten aus der Vorlage, eine pro Zeile."""
+    zeilen = (PROMPTS / "persoenlichkeiten.txt").read_text(encoding="utf-8").splitlines()
+    return [z.strip() for z in zeilen if z.strip() and not z.startswith("#")]
 
 
 def _liste(eintraege: list[str], leer: str = "(nichts)") -> str:
@@ -55,9 +72,17 @@ def _liste(eintraege: list[str], leer: str = "(nichts)") -> str:
 
 
 class LLMSpieler:
-    def __init__(self, client: LLMClient, persoenlichkeit: str = "ruhig und aufmerksam") -> None:
+    def __init__(
+        self,
+        client: LLMClient,
+        persoenlichkeit: str = "ruhig und aufmerksam",
+        volle_runden: int = 1,
+    ) -> None:
         self.client = client
         self.persoenlichkeit = persoenlichkeit
+        # Wie viele Runden das LLM komplett sieht. Ältere Diskussionen kennt es
+        # nur noch aus seinen eigenen Notizen.
+        self.volle_runden = volle_runden
         self._system_vorlage = (PROMPTS / "system.txt").read_text(encoding="utf-8")
         self._zug_vorlage = (PROMPTS / "zug.txt").read_text(encoding="utf-8")
 
@@ -80,12 +105,22 @@ class LLMSpieler:
             lebende=", ".join(zug.lebende),
             geheimwissen=_liste(zug.geheimwissen),
             notizen=_liste(zug.notizen),
-            ereignisse=_liste([f"[Runde {e.runde}] {e.text}" for e in zug.ereignisse]),
+            ereignisse=_liste([f"[Runde {e.runde}] {e.text}" for e in self.verlauf(zug)]),
             aufgabe=aufgabe,
         )
 
+    def verlauf(self, zug: Zug) -> list[Erinnerung]:
+        """Gekürzter Spielverlauf: Alte Diskussionsbeiträge fallen weg,
+        Tode, aufgedeckte Rollen und Abstimmungen bleiben."""
+        erinnerungen = [
+            Erinnerung(e.runde, e.text, wichtig=e.phase is not Phase.DISKUSSION)
+            for e in zug.ereignisse
+        ]
+        return kontext_auswaehlen(erinnerungen, zug.runde, self.volle_runden)
+
     def handeln(self, zug: Zug) -> Aktion:
-        ziele = [name for name in zug.lebende if name != zug.ich]
+        # Die Engine nennt die gültigen Ziele (z. B. ohne Mitwerwolf).
+        ziele = zug.ziele or [name for name in zug.lebende if name != zug.ich]
         try:
             antwort = self.client.anfragen(
                 self.system_prompt(zug),

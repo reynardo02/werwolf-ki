@@ -117,6 +117,7 @@ class Engine:
             ziel = aktion.parameter["ziel"]
             vorschlaege.append(ziel)
             self._melden(Phase.NACHT, f"{wolf.name} (Werwolf) wählt {ziel}.", oeffentlich=False)
+            self._begruendung_melden(Phase.NACHT, wolf, aktion)
 
         # Mehrheit der Wolfsstimmen, bei Gleichstand entscheidet der Zufall.
         opfer = self._mehrheit(vorschlaege) or self.rng.choice(self._spitzenreiter(vorschlaege))
@@ -149,10 +150,7 @@ class Engine:
             ziel = aktion.parameter["ziel"]
             stimmen.append(ziel)
             self._melden(Phase.ABSTIMMUNG, f"{spieler.name} stimmt für {ziel}.")
-            if begruendung := aktion.parameter.get("begruendung"):
-                self._melden(
-                    Phase.ABSTIMMUNG, f"Begründung {spieler.name}: {begruendung}", oeffentlich=False
-                )
+            self._begruendung_melden(Phase.ABSTIMMUNG, spieler, aktion)
 
         # Nur eine eindeutige Mehrheit (meiste Stimmen) scheidet aus.
         verurteilt = self._mehrheit(stimmen)
@@ -165,9 +163,13 @@ class Engine:
         for spieler in self._lebende_spieler():
             aktion = self._fragen(spieler, Phase.RUNDENENDE, NOTIZ_SCHREIBEN)
             spieler.notizen.append(f"Runde {self.runde}: {aktion.parameter['text']}")
+            # Notizen sind privat, im Protokoll zeigen sie, was ein Spieler wirklich denkt.
+            self._melden(
+                Phase.RUNDENENDE, f"Notiz {spieler.name}: {aktion.parameter['text']}", oeffentlich=False
+            )
 
     def _ende(self, gewinner: Team) -> Ergebnis:
-        self._melden(Phase.RUNDENENDE, f"Spielende: {gewinner.value} gewinnen!")
+        self._melden(Phase.SPIELENDE, f"Spielende: {gewinner.value} gewinnen!")
         return Ergebnis(gewinner, self.runde, [s.name for s in self._lebende_spieler()])
 
     # ------------------------------------------------------------------
@@ -200,6 +202,7 @@ class Engine:
                 notizen=list(spieler.notizen),
                 ereignisse=[e for e in self.protokoll if e.oeffentlich],
                 hinweis=hinweis,
+                ziele=list(gueltige_ziele or []),
             )
             aktion = spieler.agent.handeln(zug)
             hinweis = self._pruefen(aktion, tool, gueltige_ziele or [])
@@ -245,6 +248,10 @@ class Engine:
             s for s in self.spieler.values()
             if s.rolle is rolle and (s.lebendig or not nur_lebende)
         ]
+
+    def _begruendung_melden(self, phase: Phase, spieler: Spieler, aktion: Aktion) -> None:
+        if begruendung := aktion.parameter.get("begruendung"):
+            self._melden(phase, f"Begründung {spieler.name}: {begruendung}", oeffentlich=False)
 
     def _toeten(self, phase: Phase, name: str, grund: str) -> None:
         spieler = self.spieler[name]

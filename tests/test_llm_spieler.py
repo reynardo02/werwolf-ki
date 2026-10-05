@@ -8,10 +8,10 @@ import pytest
 from core.llm_client import Antwort, BudgetErschoepft, LLMFehler
 from core.tools import ToolCall, ToolSchema
 from werwolf.engine import Engine
-from werwolf.llm_spieler import LLMSpieler
+from werwolf.llm_spieler import LLMSpieler, persoenlichkeiten_laden
 from werwolf.mock_agent import MockAgent
 from werwolf.roles import Rolle
-from werwolf.schnittstelle import Agent, Phase, Zug
+from werwolf.schnittstelle import Agent, Ereignis, Phase, Zug
 
 NAMEN = ["Anna", "Ben", "Clara", "Dario", "Emil", "Frieda", "Greta"]
 ROLLEN = {
@@ -127,3 +127,60 @@ def test_hinweis_landet_im_prompt() -> None:
     assert "Runde 1: Anna wirkt nervös." in text
     assert "'Zoe' ist kein gültiges Ziel." in text
     assert "Nutze das Tool abstimmen" in text
+
+
+def test_werwolf_bekommt_mitwolf_nicht_als_ziel() -> None:
+    client = FakeClient()
+    engine_mit("Anna", client).spielen()
+    _, _, tools = client.anfragen_liste[0]  # erste Nacht, Anna ist Werwolf
+    assert "Ben" not in tools[0].parameter["ziel"]["enum"]
+
+
+def test_persoenlichkeiten_und_im_system_prompt() -> None:
+    persoenlichkeiten = persoenlichkeiten_laden()
+    assert len(persoenlichkeiten) >= 7  # genug für eine volle Runde
+    assert not any(p.startswith("#") for p in persoenlichkeiten)
+
+    client = FakeClient()
+    spieler = LLMSpieler(client, persoenlichkeiten[0])
+    agenten: dict[str, Agent] = {n: MockAgent(random.Random(i)) for i, n in enumerate(NAMEN)}
+    agenten["Dario"] = spieler
+    Engine(agenten, rng=random.Random(0), rollen=ROLLEN).spielen()
+    assert f"Persönlichkeit: {persoenlichkeiten[0]}" in client.anfragen_liste[0][0]
+
+
+def test_alte_diskussionen_fallen_weg_tode_bleiben() -> None:
+    spieler = LLMSpieler(FakeClient())
+    zug = Zug(
+        ich="Emil", rolle=Rolle.DORFBEWOHNER, runde=2, phase=Phase.DISKUSSION,
+        erlaubte_tools=["sprechen"], lebende=["Anna", "Ben", "Emil"], geheimwissen=[],
+        notizen=[], ereignisse=[
+            Ereignis(1, Phase.MORGEN, "Dario wurde getötet. Dario war Dorfbewohner."),
+            Ereignis(1, Phase.DISKUSSION, 'Anna: "Alte Rede"'),
+            Ereignis(1, Phase.ABSTIMMUNG, "Ben stimmt für Anna."),
+            Ereignis(2, Phase.DISKUSSION, 'Ben: "Neue Rede"'),
+        ],
+    )
+    text = spieler.zug_prompt(zug)
+    assert "Dario wurde getötet" in text
+    assert "Ben stimmt für Anna." in text
+    assert "Neue Rede" in text
+    assert "Alte Rede" not in text
+
+
+def test_partie_nur_mit_llm_spielern() -> None:
+    """Meilenstein 3: Alle Spieler sind LLM-Spieler mit eigener Persönlichkeit."""
+    client = FakeClient()
+    persoenlichkeiten = persoenlichkeiten_laden()
+    agenten: dict[str, Agent] = {
+        name: LLMSpieler(client, persoenlichkeiten[i]) for i, name in enumerate(NAMEN)
+    }
+    engine = Engine(agenten, rng=random.Random(0), rollen=ROLLEN)
+    engine.spielen()
+
+    # Jeder wurde gefragt, jeder mit seiner eigenen Persönlichkeit.
+    systeme = {system for system, _, _ in client.anfragen_liste}
+    for i, name in enumerate(NAMEN):
+        assert any(f"Du bist {name}" in s and persoenlichkeiten[i] in s for s in systeme)
+    # Der vernünftige Fake bleibt immer regelkonform.
+    assert not any("Zufallsaktion" in e.text for e in engine.protokoll)

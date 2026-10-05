@@ -1,0 +1,8 @@
+# Eine Persönlichkeit pro Zeile. Zeilen mit # werden ignoriert.
+misstrauisch, redet wenig und kommt schnell auf den Punkt
+charmant und gesprächig, lenkt gern vom Thema ab
+logisch und analytisch, zählt Fakten und Stimmen auf
+impulsiv, beschuldigt schnell und ändert oft die Meinung
+ruhig und freundlich, sucht nach Kompromissen
+dramatisch und emotional, fühlt sich leicht angegriffen
+sarkastisch, stellt anderen gern unbequeme Fragen
