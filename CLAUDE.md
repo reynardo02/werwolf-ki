@@ -70,7 +70,8 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Serie 5, Spielleiter sagt allen die Nachtreihenfolge an (karten-Ereignis in vollmondnacht/engine.py):
   37,4 % (Zufall 26,8 %), Dorf gewinnt 6/20 – kein messbarer Effekt, Unterschied zu Serie 4 im
   Rauschen. Bleibt drin, weil es der echten Regel entspricht (der Spielleiter ruft laut auf).
-  Logs 1–5: Die Reihenfolge wird zitiert, aber Räuber→Unruhestifterin weiter falsch gedeutet,
-  und „wurde vertauscht“ gilt schon als verdächtig. Prompt-Hinweise stoßen beim Modell an Grenzen.
+  Logs 1–15: Die Reihenfolge wird nur 2× erwähnt, das Modell nutzt die Ansage kaum. Kartenweg wirkt
+  (3 Siege gegen getauschte Werwölfe), Hauptfehler bleibt: ehrliche Tauscher sterben (5×).
+  Prompt-Hinweise stoßen bei gemini-3.5-flash-lite an Grenzen.
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
