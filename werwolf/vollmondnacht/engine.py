@@ -84,6 +84,13 @@ class VollmondEngine:
     # ------------------------------------------------------------------
 
     def spielen(self) -> VollmondErgebnis:
+        # Wie am Tisch die Rollenmarker: Alle wissen, welche Karten im Spiel sind.
+        im_spiel = sorted(list(self.karten.values()) + self.mitte, key=lambda r: list(Rolle).index(r))
+        karten = ", ".join(r.value for r in im_spiel)
+        self._melden(
+            Phase.NACHT, f"Im Spiel sind diese {len(im_spiel)} Karten (3 davon liegen in der Mitte): {karten}.",
+            art="karten", daten={"karten": karten},
+        )
         self._melden(Phase.NACHT, "Es wird Nacht. Alle schließen die Augen.", art="runde")
         self._nacht()
         self._melden(Phase.DISKUSSION, "Der Tag bricht an. Wer sind die Werwölfe?", art="tag")

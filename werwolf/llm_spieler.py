@@ -11,6 +11,7 @@ from pathlib import Path
 
 from core.gedaechtnis import Erinnerung, kontext_auswaehlen
 from core.llm_client import LLMClient, LLMFehler
+from core.tools import ToolSchema
 from werwolf.roles import Rolle, Team
 from werwolf.schnittstelle import (
     ABSTIMMEN,
@@ -72,6 +73,9 @@ def _liste(eintraege: list[str], leer: str = "(nichts)") -> str:
 
 
 class LLMSpieler:
+    # Unterklassen (z. B. für Vollmondnacht) bringen eigene Vorlagen mit.
+    PROMPT_ORDNER = PROMPTS
+
     def __init__(
         self,
         client: LLMClient,
@@ -83,8 +87,8 @@ class LLMSpieler:
         # Wie viele Runden das LLM komplett sieht. Ältere Diskussionen kennt es
         # nur noch aus seinen eigenen Notizen.
         self.volle_runden = volle_runden
-        self._system_vorlage = (PROMPTS / "system.txt").read_text(encoding="utf-8")
-        self._zug_vorlage = (PROMPTS / "zug.txt").read_text(encoding="utf-8")
+        self._system_vorlage = (self.PROMPT_ORDNER / "system.txt").read_text(encoding="utf-8")
+        self._zug_vorlage = (self.PROMPT_ORDNER / "zug.txt").read_text(encoding="utf-8")
 
     def system_prompt(self, zug: Zug) -> str:
         return self._system_vorlage.format(
@@ -118,15 +122,14 @@ class LLMSpieler:
         ]
         return kontext_auswaehlen(erinnerungen, zug.runde, self.volle_runden)
 
-    def handeln(self, zug: Zug) -> Aktion:
+    def tools(self, zug: Zug) -> list[ToolSchema]:
         # Die Engine nennt die gültigen Ziele (z. B. ohne Mitwerwolf).
         ziele = zug.ziele or [name for name in zug.lebende if name != zug.ich]
+        return tool_schemas(zug.erlaubte_tools, ziele)
+
+    def handeln(self, zug: Zug) -> Aktion:
         try:
-            antwort = self.client.anfragen(
-                self.system_prompt(zug),
-                self.zug_prompt(zug),
-                tool_schemas(zug.erlaubte_tools, ziele),
-            )
+            antwort = self.client.anfragen(self.system_prompt(zug), self.zug_prompt(zug), self.tools(zug))
         except LLMFehler:
             # Eine leere Aktion ist ungültig: Die Engine gibt einen zweiten
             # Versuch und wählt danach zufällig. Das Spiel läuft also weiter.
