@@ -42,6 +42,9 @@ class Ereignis:
     phase: Phase
     text: str
     oeffentlich: bool = True  # False: nur im Protokoll, kein Agent sieht es
+    # Maschinenlesbar für Auswertungen, z. B. art="stimme", daten={"von": "Ben", "ziel": "Anna"}
+    art: str = "info"
+    daten: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

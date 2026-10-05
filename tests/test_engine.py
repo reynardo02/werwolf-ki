@@ -193,3 +193,25 @@ def test_notizen_und_begruendungen_nur_im_geheimen_protokoll() -> None:
     assert any(t.startswith("Notiz ") for t in geheim)
     assert any(t.startswith("Begründung ") for t in geheim)
     assert not any(e.text.startswith(("Notiz ", "Begründung ")) for e in engine.protokoll if e.oeffentlich)
+
+
+ARTEN = {
+    "runde", "opfer_vorschlag", "begruendung", "pruefung", "tod", "rede", "stimme",
+    "gleichstand", "notiz", "ungueltig", "zufallsaktion", "spielende",
+}
+
+
+def test_jedes_ereignis_hat_art_und_daten() -> None:
+    for seed in range(20):
+        engine = mock_engine(seed)
+        ergebnis = engine.spielen()
+        assert {e.art for e in engine.protokoll} <= ARTEN
+
+        ende = engine.protokoll[-1]
+        assert ende.art == "spielende" and ende.daten["gewinner"] == ergebnis.gewinner.value
+        for e in engine.protokoll:
+            if e.art == "tod":
+                assert e.daten["rolle"] == engine.spieler[e.daten["name"]].rolle.value
+                assert e.daten["ursache"] in ("nacht", "abstimmung")
+            if e.art == "stimme":
+                assert e.daten["ziel"] in engine.spieler and e.daten["von"] != e.daten["ziel"]
