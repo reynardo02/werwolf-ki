@@ -1,6 +1,7 @@
 # Eine Persönlichkeit pro Zeile. Zeilen mit # werden ignoriert.
+# Sie prägen den Stil, nicht die Strategie: „lenkt gern ab“ würde z. B. Dorfbewohner verdächtig machen.
 misstrauisch, redet wenig und kommt schnell auf den Punkt
-charmant und gesprächig, lenkt gern vom Thema ab
+charmant und gesprächig, erzählt gern kleine Anekdoten
 logisch und analytisch, zählt Fakten und Stimmen auf
 impulsiv, beschuldigt schnell und ändert oft die Meinung
 ruhig und freundlich, sucht nach Kompromissen
