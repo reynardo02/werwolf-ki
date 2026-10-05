@@ -7,6 +7,9 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - core/: Agent, Gedächtnis, LLM-Client, Tool-Schemas. Kennt KEINE Werwolf-Regeln.
 - werwolf/: Engine, Rollen, Prompts, MockAgent, LLMSpieler. Kennt KEIN LLM-SDK,
   nur die Schnittstelle `core.llm_client.LLMClient`.
+- werwolf/vollmondnacht/: zweite Spielvariante „Werwölfe Vollmondnacht“ (Ravensburger):
+  eine Nacht, ein Tag, eine gleichzeitige Abstimmung, 12 Rollen, Szenarien aus der Anleitung.
+  Nutzt Schnittstelle, MockAgent, Protokoll und Log von werwolf/ mit.
 - Nur core/llm_client.py importiert das openai-SDK (OpenAI-kompatibles Format).
 - main.py startet eine Partie. logs/ für JSONL und Spielprotokolle.
 
@@ -27,6 +30,7 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Partie mit LLM: `.env` aus `.env.example` anlegen, dann `.venv/bin/python main.py --llm 1`
   (`--llm alle` für eine reine LLM-Partie). Protokoll und Log landen in `logs/partie_*.txt/.jsonl`.
 - Viele Partien: `.venv/bin/python main.py --partien 20` (mit `--llm …` kombinierbar)
+- Vollmondnacht: `.venv/bin/python main.py --regeln vollmondnacht --spieler 7 [--szenario Payback]`
 - Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand
@@ -40,5 +44,8 @@ Mit `--llm alle` und gemini-3.5-flash-lite geprüft: Partie ohne API-Fehler, Wer
 lügen öffentlich und planen in ihren Notizen, Dorfbewohner verdächtigen sich gegenseitig.
 Meilenstein 4: Auswertung – umgesetzt (Ereignisse mit `art`/`daten`, JSONL-Log über
 werwolf/jsonl_log.py, Statistik über werwolf/auswertung.py, Skript auswerten.py).
-Offen: 20 LLM-Partien spielen und auswerten.
+Mit 12 LLM-Partien geprüft: Werwölfe gewinnen alle, das Dorf stimmt bei der öffentlichen
+Reihum-Abstimmung schlechter als Zufall (Herdenverhalten).
+Zusatz: Spielvariante Vollmondnacht – umgesetzt (alle 12 Rollen inkl. Doppelgängerin,
+alle Szenarien, VollmondLLMSpieler, eigene Auswertung). Offen: echte LLM-Partien prüfen.
 Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.

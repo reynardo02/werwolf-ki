@@ -6,3 +6,6 @@ impulsiv, beschuldigt schnell und ändert oft die Meinung
 ruhig und freundlich, sucht nach Kompromissen
 dramatisch und emotional, fühlt sich leicht angegriffen
 sarkastisch, stellt anderen gern unbequeme Fragen
+neugierig, fragt viel nach und merkt sich Widersprüche
+vorsichtig, legt sich ungern fest und wägt lange ab
+selbstbewusst, übernimmt gern die Führung der Diskussion
