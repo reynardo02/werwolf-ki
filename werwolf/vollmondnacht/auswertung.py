@@ -26,6 +26,9 @@ class VollmondPartie:
     stimmen: dict[str, str]  # von -> ziel
     zufallsaktionen: int
     api: dict[str, Any] | None
+    sieger: list[str] = field(default_factory=list)
+    mensch: str | None = None  # Platz, an dem ein Mensch gespielt hat
+    seed: int | None = None
 
 
 def partie_aus_log(zeilen: list[dict[str, Any]]) -> VollmondPartie:
@@ -46,6 +49,9 @@ def partie_aus_log(zeilen: list[dict[str, Any]]) -> VollmondPartie:
         stimmen={z["daten"]["von"]: z["daten"]["ziel"] for z in zeilen if z["art"] == "stimme"},
         zufallsaktionen=sum(1 for z in zeilen if z["art"] == "zufallsaktion"),
         api=ende.get("api"),
+        sieger=ende.get("sieger", []),
+        mensch=next((s["name"] for s in kopf["spieler"] if s["typ"] == "mensch"), None),
+        seed=kopf.get("seed"),
     )
 
 
@@ -141,4 +147,44 @@ def bericht(a: VollmondAuswertung, titel: str) -> str:
     ]
     if a.api_aufrufe:
         z.append(_zeile("API-Aufrufe pro Partie", f"{a.api_aufrufe / a.partien:.0f}"))
+    return "\n".join(z)
+
+
+def mensch_bericht(partien: list[VollmondPartie]) -> str:
+    """Deine Bilanz aus den Partien, in denen du selbst mitgespielt hast."""
+    eigene = [p for p in partien if p.mensch and p.gewinner is not None]
+    z = ["Deine Partien", "-------------", _zeile("Partien", str(len(eigene)))]
+    if not eigene:
+        return "\n".join(z)
+
+    siege = sum(p.mensch in p.sieger for p in eigene)
+    z.append(_zeile("Gewonnen", _prozent(quote(siege, len(eigene)), f"({siege})")))
+    # Nach der Partei der Endkarte – die entscheidet, ob du gewinnst.
+    for partei in ("Dorfgemeinschaft", "Werwolfsrudel"):
+        als = [p for p in eigene if _partei(p.endrollen[p.mensch]) == partei]
+        if als:
+            gewonnen = sum(p.mensch in p.sieger for p in als)
+            z.append(_zeile(f"  als {partei}", f"{gewonnen} von {len(als)} gewonnen"))
+
+    # Deine Stimmen, wenn du am Ende im Dorf warst: Hast du einen Werwolf getroffen?
+    im_dorf = [p for p in eigene if _partei(p.endrollen[p.mensch]) == "Dorfgemeinschaft" and p.mensch in p.stimmen]
+    treffer = sum(p.endrollen[p.stimmen[p.mensch]] == WERWOLF for p in im_dorf)
+    if im_dorf:
+        z.append(_zeile("Stimme traf Werwolf", f"{treffer} von {len(im_dorf)} (im Dorf)"))
+
+    # Wie sehr haben die anderen dich verdächtigt? Vergleich mit fairer Verteilung.
+    gegen_dich = sum(sum(ziel == p.mensch for ziel in p.stimmen.values()) for p in eigene)
+    fair = sum((len(p.stimmen) - 1) / (len(p.startrollen) - 1) for p in eigene)
+    z.append(_zeile("Stimmen gegen dich", f"{gegen_dich} (bei Zufall etwa {fair:.1f})"))
+    hingerichtet = sum(p.mensch in p.tote for p in eigene)
+    z.append(_zeile("Du wurdest hingerichtet", f"{hingerichtet} von {len(eigene)}"))
+
+    z.append("")
+    for p in eigene:
+        start, ende = p.startrollen[p.mensch], p.endrollen[p.mensch]
+        karte = start if start == ende else f"{start} → {ende}"
+        ergebnis = "gewonnen" if p.mensch in p.sieger else "verloren"
+        stimme = p.stimmen.get(p.mensch, "–")
+        z.append(f"  Seed {p.seed}: {p.mensch} ({karte}), Stimme gegen {stimme}, "
+                 f"tot: {', '.join(p.tote) or 'niemand'} – {ergebnis}")
     return "\n".join(z)

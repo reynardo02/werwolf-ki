@@ -33,6 +33,7 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - Vollmondnacht: `.venv/bin/python main.py --regeln vollmondnacht --spieler 7 [--szenario Payback]`
 - Selbst mitspielen: `.venv/bin/python main.py --regeln vollmondnacht --mensch [NAME] --llm alle`
   (Konsole zeigt nur Öffentliches, Geheimnisse danach im Protokoll)
+- Eigene Bilanz: `.venv/bin/python auswerten.py --mensch` (nur Vollmondnacht-Partien mit Mensch)
 - Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand

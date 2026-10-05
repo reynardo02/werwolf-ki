@@ -44,3 +44,27 @@ def test_stimmen_gegen_start_und_end_werwoelfe() -> None:
     assert a.dorf_stimmen_startwerwolf == 1  # Anna -> Ben
     assert a.dorf_stimmen_werwolf == 1  # Ben -> Clara
     assert "Stimmen gegen Start-Werwölfe:" in bericht(a, "Test")
+
+
+def test_mensch_bericht() -> None:
+    from werwolf.vollmondnacht.auswertung import mensch_bericht
+
+    def partie(start: str, ende: str, stimme: str, sieger: list[str]) -> VollmondPartie:
+        return VollmondPartie(
+            gruppe="Test", startrollen={"Anna": start, "Ben": "Werwolf", "Clara": "Dorfbewohner"},
+            endrollen={"Anna": ende, "Ben": "Werwolf", "Clara": "Dorfbewohner"},
+            gewinner=["x"], tote=["Ben"], stimmen={"Anna": stimme, "Ben": "Anna", "Clara": "Ben"},
+            zufallsaktionen=0, api=None, sieger=sieger, mensch="Anna", seed=1,
+        )
+
+    partien = [
+        partie("Dorfbewohner", "Dorfbewohner", "Ben", ["Anna", "Clara"]),
+        partie("Räuber", "Werwolf", "Clara", []),  # Karte getauscht: zählt als Werwolfsrudel
+        VollmondPartie("Test", {}, {}, ["x"], [], {}, 0, None),  # ohne Mensch: wird ignoriert
+    ]
+    text = mensch_bericht(partien)
+    assert "Partien:" in text and "50.0%" in text
+    assert "als Dorfgemeinschaft:" in text and "1 von 1 gewonnen" in text
+    assert "als Werwolfsrudel:" in text and "0 von 1 gewonnen" in text
+    assert "1 von 1 (im Dorf)" in text  # nur die Stimme als Dorf zählt
+    assert "Räuber → Werwolf" in text

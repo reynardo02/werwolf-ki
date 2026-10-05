@@ -3,6 +3,7 @@
 Beispiele:
   python auswerten.py                         # alle Logs in logs/
   python auswerten.py "logs/partie_20261005_*.jsonl"
+  python auswerten.py --mensch                # nur deine eigenen Partien (--mensch beim Spielen)
 """
 
 import argparse
@@ -18,6 +19,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Statistik über Werwolf-Partien")
     parser.add_argument(
         "muster", nargs="*", default=["logs/*.jsonl"], help="Log-Dateien oder Muster (Standard: logs/*.jsonl)"
+    )
+    parser.add_argument(
+        "--mensch", action="store_true", help="Nur Vollmondnacht-Partien, in denen du selbst mitgespielt hast"
     )
     args = parser.parse_args()
 
@@ -38,6 +42,10 @@ def main() -> None:
         except (ValueError, KeyError, IndexError) as fehler:
             print(f"Übersprungen: {datei} ({fehler})")
 
+    if args.mensch:
+        print(vollmond.mensch_bericht(vollmondnaechte))
+        return
+
     if klassische:
         gesamt = klassisch.auswerten(klassische)
         print(klassisch.bericht(gesamt, f"Klassisch: {len(klassische)} Partien"))
@@ -54,6 +62,8 @@ def main() -> None:
             for name, gruppe in sorted(gesamt_v.gruppen.items()):
                 print()
                 print(vollmond.bericht(gruppe, name))
+        if any(p.mensch for p in vollmondnaechte):
+            print("\n" + vollmond.mensch_bericht(vollmondnaechte))
 
 
 if __name__ == "__main__":
