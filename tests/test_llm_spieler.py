@@ -127,3 +127,10 @@ def test_hinweis_landet_im_prompt() -> None:
     assert "Runde 1: Anna wirkt nervös." in text
     assert "'Zoe' ist kein gültiges Ziel." in text
     assert "Nutze das Tool abstimmen" in text
+
+
+def test_werwolf_bekommt_mitwolf_nicht_als_ziel() -> None:
+    client = FakeClient()
+    engine_mit("Anna", client).spielen()
+    _, _, tools = client.anfragen_liste[0]  # erste Nacht, Anna ist Werwolf
+    assert "Ben" not in tools[0].parameter["ziel"]["enum"]

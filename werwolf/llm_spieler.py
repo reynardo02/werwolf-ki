@@ -85,7 +85,8 @@ class LLMSpieler:
         )
 
     def handeln(self, zug: Zug) -> Aktion:
-        ziele = [name for name in zug.lebende if name != zug.ich]
+        # Die Engine nennt die gültigen Ziele (z. B. ohne Mitwerwolf).
+        ziele = zug.ziele or [name for name in zug.lebende if name != zug.ich]
         try:
             antwort = self.client.anfragen(
                 self.system_prompt(zug),

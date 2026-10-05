@@ -65,6 +65,7 @@ class Zug:
     notizen: list[str]
     ereignisse: list[Ereignis]
     hinweis: str | None = None  # Fehlermeldung, falls der erste Versuch ungültig war
+    ziele: list[str] = field(default_factory=list)  # gültige Ziele, leer bei Text-Tools
 
 
 class Agent(Protocol):
