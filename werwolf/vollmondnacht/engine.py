@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Agent, Aktion, Ereignis, Phase, Zug
-from werwolf.vollmondnacht.rollen import Partei, Rolle, gewinner_bestimmen
+from werwolf.vollmondnacht.rollen import NACHT_REIHENFOLGE, Partei, Rolle, gewinner_bestimmen
 
 # Tools der Nacht (Abstimmen und Sprechen kommen aus der gemeinsamen Schnittstelle).
 NACHAHMEN = "nachahmen"  # Doppelgängerin
@@ -87,9 +87,14 @@ class VollmondEngine:
         # Wie am Tisch die Rollenmarker: Alle wissen, welche Karten im Spiel sind.
         im_spiel = sorted(list(self.karten.values()) + self.mitte, key=lambda r: list(Rolle).index(r))
         karten = ", ".join(r.value for r in im_spiel)
+        # Der Spielleiter ruft die Rollen laut auf, also kennen alle die Reihenfolge.
+        # Ohne sie lässt sich nicht prüfen, ob zwei Aussagen über Tausche zusammenpassen.
+        reihenfolge = ", ".join(r.value for r in NACHT_REIHENFOLGE if r in im_spiel)
         self._melden(
-            Phase.NACHT, f"Im Spiel sind diese {len(im_spiel)} Karten (3 davon liegen in der Mitte): {karten}.",
-            art="karten", daten={"karten": karten},
+            Phase.NACHT,
+            f"Im Spiel sind diese {len(im_spiel)} Karten (3 davon liegen in der Mitte): {karten}. "
+            f"Nachts sind die Rollen in dieser Reihenfolge dran: {reihenfolge}.",
+            art="karten", daten={"karten": karten, "reihenfolge": reihenfolge},
         )
         self._melden(Phase.NACHT, "Es wird Nacht. Alle schließen die Augen.", art="runde")
         self._nacht()

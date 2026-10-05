@@ -237,3 +237,17 @@ def test_wer_die_doppelgaengerin_karte_bekommt_uebernimmt_die_kopie() -> None:
     assert ergebnis.endrollen["Dario"] is R.WERWOLF  # Doppelgängerin-Karte = Werwolf
     assert ergebnis.endrollen["Anna"] is R.RAEUBER
     assert set(ergebnis.sieger) == {"Ben", "Dario"}
+
+
+def test_nachtreihenfolge_wird_allen_angesagt() -> None:
+    verteilung = {"Anna": R.UNRUHESTIFTERIN, "Ben": R.WERWOLF, "Clara": R.RAEUBER}
+    agenten = {n: Skript() for n in verteilung}
+    ereignisse = []
+    karten = list(verteilung.values()) + [R.DORFBEWOHNER, R.SCHLAFLOSE, R.SEHERIN]
+    VollmondEngine(agenten, karten, rng=random.Random(0), verteilung=verteilung,
+                   mitte=[R.DORFBEWOHNER, R.SCHLAFLOSE, R.SEHERIN], beobachter=ereignisse.append).spielen()
+    ansage = next(e for e in ereignisse if e.art == "karten")
+    assert ansage.oeffentlich
+    # Nur Rollen mit Nachtaktion, die im Spiel sind – auch die aus der Mitte.
+    assert ansage.daten["reihenfolge"] == "Werwolf, Seherin, Räuber, Unruhestifterin, Schlaflose"
+    assert "Reihenfolge dran: Werwolf, Seherin" in ansage.text
