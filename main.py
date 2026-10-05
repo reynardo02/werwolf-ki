@@ -27,6 +27,7 @@ def partie_spielen(
     client: OpenAIKompatiblerClient | None,
     dateiname: str,
     ausfuehrlich: bool,
+    ordner: Path = LOGS,
 ) -> str:
     """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück."""
     rng = random.Random(seed)
@@ -60,7 +61,7 @@ def partie_spielen(
     modell = client.modell if client else None
 
     log = JsonlLog(
-        LOGS / f"{dateiname}.jsonl",
+        ordner / f"{dateiname}.jsonl",
         {
             "zeit": datetime.now().isoformat(timespec="seconds"),
             "modell": modell,
@@ -125,7 +126,7 @@ def partie_spielen(
         if st.letzter_fehler:
             protokoll.schreiben(f"Letzter Fehler: {st.letzter_fehler}")
 
-    protokoll.speichern(LOGS / f"{dateiname}.txt")
+    protokoll.speichern(ordner / f"{dateiname}.txt")
     return kurz
 
 
