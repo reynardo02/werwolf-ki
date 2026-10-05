@@ -169,7 +169,7 @@ class Engine:
             )
 
     def _ende(self, gewinner: Team) -> Ergebnis:
-        self._melden(Phase.RUNDENENDE, f"Spielende: {gewinner.value} gewinnen!")
+        self._melden(Phase.SPIELENDE, f"Spielende: {gewinner.value} gewinnen!")
         return Ergebnis(gewinner, self.runde, [s.name for s in self._lebende_spieler()])
 
     # ------------------------------------------------------------------

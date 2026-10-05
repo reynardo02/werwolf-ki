@@ -19,6 +19,7 @@ class Phase(Enum):
     DISKUSSION = "Diskussion"
     ABSTIMMUNG = "Abstimmung"
     RUNDENENDE = "Rundenende"
+    SPIELENDE = "Spielende"
 
 
 # Namen der Tools, wie sie später auch das LLM sieht.

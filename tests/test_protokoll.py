@@ -41,4 +41,4 @@ def test_ganze_partie_wird_gespeichert(tmp_path) -> None:
     text = pfad.read_text(encoding="utf-8")
     assert text.startswith("Testpartie\n==========\n- Anna: ")
     assert "=== Runde 1 ===" in text
-    assert "Spielende:" in text
+    assert "--- Spielende ---\nSpielende:" in text

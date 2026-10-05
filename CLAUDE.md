@@ -33,5 +33,7 @@ Meilenstein 2: Erster LLM-Agent – umgesetzt (LLM-Client, Tool-Schemas, LLMSpie
 Konfiguration über .env, Budget-Limit, Tests mit Fake-Client).
 Meilenstein 3: Alle Agenten als LLM – umgesetzt (Persönlichkeiten in
 werwolf/prompts/persoenlichkeiten.txt, gekürztes Gedächtnis über core/gedaechtnis.py,
-lesbares Protokoll über werwolf/protokoll.py). Offen: echte Partie mit `--llm alle` prüfen.
+lesbares Protokoll über werwolf/protokoll.py, Tempolimit LLM_MAX_PRO_MINUTE).
+Mit `--llm alle` und gemini-3.5-flash-lite geprüft: Partie ohne API-Fehler, Werwölfe
+lügen öffentlich und planen in ihren Notizen, Dorfbewohner verdächtigen sich gegenseitig.
 Als Nächstes: Meilenstein 4, JSON-Logs und Auswertung über viele Partien.
