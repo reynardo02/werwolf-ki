@@ -1,4 +1,4 @@
-"""Wertet die JSONL-Logs vieler Partien aus.
+"""Wertet die JSONL-Logs vieler Partien aus – getrennt nach Spielvariante.
 
 Beispiele:
   python auswerten.py                         # alle Logs in logs/
@@ -9,8 +9,9 @@ import argparse
 import glob
 from pathlib import Path
 
-from werwolf.auswertung import auswerten, bericht, partie_aus_log
+from werwolf import auswertung as klassisch
 from werwolf.jsonl_log import log_lesen
+from werwolf.vollmondnacht import auswertung as vollmond
 
 
 def main() -> None:
@@ -25,20 +26,34 @@ def main() -> None:
     if not dateien:
         parser.error(f"Keine Logs gefunden für: {' '.join(args.muster)}")
 
-    partien = []
+    klassische, vollmondnaechte = [], []
     for datei in dateien:
+        zeilen = log_lesen(datei)
         try:
-            partien.append(partie_aus_log(log_lesen(datei)))
-        except (ValueError, KeyError) as fehler:
+            # Alte Logs haben noch kein Feld "regeln": Die sind klassisch.
+            if zeilen and zeilen[0].get("regeln") == "vollmondnacht":
+                vollmondnaechte.append(vollmond.partie_aus_log(zeilen))
+            else:
+                klassische.append(klassisch.partie_aus_log(zeilen))
+        except (ValueError, KeyError, IndexError) as fehler:
             print(f"Übersprungen: {datei} ({fehler})")
 
-    gesamt = auswerten(partien)
-    print(bericht(gesamt, f"Gesamt über {len(partien)} Partien"))
-    # Nur aufschlüsseln, wenn es mehrere Gruppen gibt (z. B. Mock vs. LLM).
-    if len(gesamt.gruppen) > 1:
-        for name, gruppe in sorted(gesamt.gruppen.items()):
-            print()
-            print(bericht(gruppe, name))
+    if klassische:
+        gesamt = klassisch.auswerten(klassische)
+        print(klassisch.bericht(gesamt, f"Klassisch: {len(klassische)} Partien"))
+        if len(gesamt.gruppen) > 1:
+            for name, gruppe in sorted(gesamt.gruppen.items()):
+                print()
+                print(klassisch.bericht(gruppe, name))
+    if vollmondnaechte:
+        if klassische:
+            print("\n")
+        gesamt_v = vollmond.auswerten(vollmondnaechte)
+        print(vollmond.bericht(gesamt_v, f"Vollmondnacht: {len(vollmondnaechte)} Partien"))
+        if len(gesamt_v.gruppen) > 1:
+            for name, gruppe in sorted(gesamt_v.gruppen.items()):
+                print()
+                print(vollmond.bericht(gruppe, name))
 
 
 if __name__ == "__main__":

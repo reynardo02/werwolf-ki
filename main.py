@@ -1,4 +1,9 @@
-"""Startet eine oder mehrere Partien Werwolf mit MockAgenten und/oder LLM-Spielern."""
+"""Startet eine oder mehrere Partien Werwolf mit MockAgenten und/oder LLM-Spielern.
+
+Zwei Spielvarianten:
+  klassisch      – viele Runden Nacht/Tag (Meilensteine 1–4)
+  vollmondnacht  – „Werwölfe Vollmondnacht“: eine Nacht, ein Tag, eine Abstimmung
+"""
 
 import argparse
 import random
@@ -6,6 +11,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from core.konfig import konfig_laden
 from core.llm_client import (
@@ -14,15 +20,54 @@ from core.llm_client import (
     OpenAIKompatiblerClient,
     Statistik,
 )
-from werwolf.engine import Engine
+from werwolf.engine import Engine, Ergebnis
 from werwolf.jsonl_log import JsonlLog
 from werwolf.llm_spieler import LLMSpieler, persoenlichkeiten_laden
 from werwolf.mock_agent import MockAgent
 from werwolf.protokoll import Protokoll
 from werwolf.schnittstelle import Agent, Ereignis
+from werwolf.vollmondnacht.engine import VollmondEngine, VollmondErgebnis
+from werwolf.vollmondnacht.llm_spieler import VollmondLLMSpieler
+from werwolf.vollmondnacht.rollen import szenario_karten, szenario_namen
 
-NAMEN = ["Anna", "Ben", "Clara", "Dario", "Emil", "Frieda", "Greta"]
+NAMEN = ["Anna", "Ben", "Clara", "Dario", "Emil", "Frieda", "Greta", "Hugo", "Ida", "Jonas"]
 LOGS = Path(__file__).parent / "logs"
+KLASSISCH = "klassisch"
+VOLLMONDNACHT = "vollmondnacht"
+SPIELERZAHL = {KLASSISCH: (5, 7), VOLLMONDNACHT: (3, 10)}
+
+
+def engine_bauen(
+    regeln: str, agenten: dict[str, Agent], rng: random.Random, szenario: str,
+    beobachter: Callable[[Ereignis], None],
+) -> tuple[Engine | VollmondEngine, dict[str, str]]:
+    """Baut die Engine der gewählten Variante und gibt die (Start-)Rolle jedes Spielers zurück."""
+    if regeln == VOLLMONDNACHT:
+        karten = szenario_karten(szenario, len(agenten), rng)
+        engine = VollmondEngine(agenten, karten, rng=rng, beobachter=beobachter)
+        return engine, {s.name: s.startrolle.value for s in engine.spieler.values()}
+    klassisch = Engine(agenten, rng=rng, beobachter=beobachter)
+    return klassisch, {s.name: s.rolle.value for s in klassisch.spieler.values()}
+
+
+def ergebnis_zusammenfassen(ergebnis: Ergebnis | VollmondErgebnis) -> tuple[str, list[str], dict[str, Any]]:
+    """Kurzfassung, Zeilen fürs Protokoll und Daten fürs Log."""
+    if isinstance(ergebnis, VollmondErgebnis):
+        gewinner = " und ".join(sorted(p.value for p in ergebnis.gewinner)) or "Niemand"
+        tote = f"tot: {', '.join(ergebnis.tote)}" if ergebnis.tote else "niemand stirbt"
+        kurz = f"{gewinner} gewinnt ({tote})"
+        zeilen = [f"{kurz}.", f"Sieger: {', '.join(ergebnis.sieger) or 'niemand'}"]
+        daten = {
+            "gewinner": sorted(p.value for p in ergebnis.gewinner),
+            "sieger": ergebnis.sieger,
+            "tote": ergebnis.tote,
+            "endrollen": {n: r.value for n, r in ergebnis.endrollen.items()},
+        }
+        return kurz, zeilen, daten
+    kurz = f"{ergebnis.gewinner.value} gewinnen nach {ergebnis.runden} Runden"
+    zeilen = [f"{kurz}.", f"Überlebende: {', '.join(ergebnis.ueberlebende)}"]
+    daten = {"gewinner": ergebnis.gewinner.value, "runden": ergebnis.runden, "ueberlebende": ergebnis.ueberlebende}
+    return kurz, zeilen, daten
 
 
 def partie_spielen(
@@ -33,6 +78,8 @@ def partie_spielen(
     dateiname: str,
     ausfuehrlich: bool,
     ordner: Path = LOGS,
+    regeln: str = KLASSISCH,
+    szenario: str | None = None,
 ) -> str:
     """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück."""
     rng = random.Random(seed)
@@ -40,15 +87,20 @@ def partie_spielen(
     if client:
         # Statistik und Budget gelten pro Partie.
         client.statistik = Statistik()
+    if regeln == VOLLMONDNACHT and szenario is None:
+        szenario = szenario_namen(anzahl_spieler)[0]
 
     # Jeder LLM-Spieler bekommt eine andere, zufällige Persönlichkeit.
     # Die Rollen werden zufällig verteilt, daher ist egal, welche Namen das LLM bekommt.
     persoenlichkeiten = rng.sample(persoenlichkeiten_laden(), anzahl_llm)
+    llm_klasse = VollmondLLMSpieler if regeln == VOLLMONDNACHT else LLMSpieler
     agenten: dict[str, Agent] = {}
     persoenlichkeit_von: dict[str, str | None] = {}
     for i, name in enumerate(namen):
         if client and i < anzahl_llm:
-            agenten[name] = LLMSpieler(client, persoenlichkeiten[i])
+            # Eigener Zufall pro Spieler aus Seed und Name: verbraucht nichts vom
+            # Zufall der Partie, gleiche Seeds verteilen also gleiche Karten.
+            agenten[name] = llm_klasse(client, persoenlichkeiten[i], rng=random.Random(f"{seed}-{name}"))
             persoenlichkeit_von[name] = persoenlichkeiten[i]
         else:
             agenten[name] = MockAgent(random.Random(rng.random()))
@@ -62,52 +114,48 @@ def partie_spielen(
         for b in beobachter:
             b(ereignis)
 
-    engine = Engine(agenten, rng=rng, beobachter=beobachten)
+    engine, rolle_von = engine_bauen(regeln, agenten, rng, szenario or "", beobachten)
     modell = client.modell if client else None
-
-    log = JsonlLog(
-        ordner / f"{dateiname}.jsonl",
-        {
-            "zeit": datetime.now().isoformat(timespec="seconds"),
-            "modell": modell,
-            "seed": seed,
-            "spieler": [
-                {
-                    "name": s.name,
-                    "rolle": s.rolle.value,
-                    "typ": "llm" if persoenlichkeit_von[s.name] else "mock",
-                    "persoenlichkeit": persoenlichkeit_von[s.name],
-                }
-                for s in engine.spieler.values()
-            ],
-        },
-    )
+    kopf: dict[str, Any] = {
+        "zeit": datetime.now().isoformat(timespec="seconds"),
+        "regeln": regeln,
+        "modell": modell,
+        "seed": seed,
+        "spieler": [
+            {
+                "name": name,
+                "rolle": rolle_von[name],
+                "typ": "llm" if persoenlichkeit_von[name] else "mock",
+                "persoenlichkeit": persoenlichkeit_von[name],
+            }
+            for name in namen
+        ],
+    }
+    if isinstance(engine, VollmondEngine):
+        kopf["szenario"] = szenario
+        kopf["mitte"] = [r.value for r in engine.mitte]
+    log = JsonlLog(ordner / f"{dateiname}.jsonl", kopf)
     beobachter.append(log)
 
-    titel = f"Werwolf – {datetime.now():%d.%m.%Y %H:%M} – Seed {seed}"
+    titel = f"Werwolf ({regeln}) – {datetime.now():%d.%m.%Y %H:%M} – Seed {seed}"
+    if szenario:
+        titel += f" – Szenario: {szenario}"
     if modell:
         titel += f" – Modell: {modell}"
-    protokoll.kopf(
-        titel,
-        [
-            f"{s.name}: {s.rolle.value} ({f'LLM, {persoenlichkeit_von[s.name]}' if persoenlichkeit_von[s.name] else 'MockAgent'})"
-            for s in engine.spieler.values()
-        ],
-    )
+    besetzung = [
+        f"{n}: {rolle_von[n]} ({f'LLM, {persoenlichkeit_von[n]}' if persoenlichkeit_von[n] else 'MockAgent'})"
+        for n in namen
+    ]
+    if "mitte" in kopf:
+        besetzung.append(f"Mitte: {', '.join(kopf['mitte'])}")
+    protokoll.kopf(titel, besetzung)
 
     try:
-        ergebnis = engine.spielen()
-        kurz = f"{ergebnis.gewinner.value} gewinnen nach {ergebnis.runden} Runden"
+        kurz, zeilen, daten = ergebnis_zusammenfassen(engine.spielen())
         protokoll.schreiben()
-        protokoll.schreiben(f"{kurz}.")
-        protokoll.schreiben(f"Überlebende: {', '.join(ergebnis.ueberlebende)}")
-        log.eintrag(
-            "ergebnis",
-            gewinner=ergebnis.gewinner.value,
-            runden=ergebnis.runden,
-            ueberlebende=ergebnis.ueberlebende,
-            api=asdict(client.statistik) if client else None,
-        )
+        for zeile in zeilen:
+            protokoll.schreiben(zeile)
+        log.eintrag("ergebnis", **daten, api=asdict(client.statistik) if client else None)
     except BudgetErschoepft as fehler:
         kurz = f"abgebrochen: {fehler}"
         protokoll.schreiben()
@@ -148,7 +196,14 @@ def partie_spielen(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Werwolf mit Agenten")
-    parser.add_argument("--spieler", type=int, default=7, help="Anzahl Spieler (5–7)")
+    parser.add_argument("--regeln", choices=[KLASSISCH, VOLLMONDNACHT], default=KLASSISCH)
+    parser.add_argument(
+        "--szenario", default=None,
+        help="Nur Vollmondnacht: Szenario aus der Anleitung (Standard: das erste passende)",
+    )
+    parser.add_argument(
+        "--spieler", type=int, default=7, help="Anzahl Spieler (klassisch 5–7, Vollmondnacht 3–10)"
+    )
     parser.add_argument("--seed", type=int, default=None, help="Zufallsstartwert der ersten Partie")
     parser.add_argument(
         "--llm", default="0", help="Wie viele Spieler das LLM steuert, Zahl oder 'alle' (Rest: MockAgent)"
@@ -156,8 +211,17 @@ def main() -> None:
     parser.add_argument("--partien", type=int, default=1, help="Wie viele Partien nacheinander")
     args = parser.parse_args()
 
-    if not 5 <= args.spieler <= len(NAMEN):
-        parser.error(f"--spieler muss zwischen 5 und {len(NAMEN)} liegen")
+    minimum, maximum = SPIELERZAHL[args.regeln]
+    if not minimum <= args.spieler <= maximum:
+        parser.error(f"--spieler muss bei '{args.regeln}' zwischen {minimum} und {maximum} liegen")
+    if args.szenario is not None:
+        if args.regeln != VOLLMONDNACHT:
+            parser.error("--szenario gibt es nur mit --regeln vollmondnacht")
+        if args.szenario not in szenario_namen(args.spieler):
+            parser.error(
+                f"Szenario '{args.szenario}' gibt es nicht für {args.spieler} Spieler. "
+                f"Möglich: {', '.join(szenario_namen(args.spieler))}"
+            )
     anzahl_llm = args.spieler if args.llm == "alle" else int(args.llm) if args.llm.isdigit() else -1
     if not 0 <= anzahl_llm <= args.spieler:
         parser.error("--llm muss 'alle' oder eine Zahl zwischen 0 und --spieler sein")
@@ -178,7 +242,10 @@ def main() -> None:
         seed = start_seed + i
         dateiname = f"partie_{zeitstempel}" + (f"_{i + 1:03d}" if args.partien > 1 else "")
         try:
-            kurz = partie_spielen(seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich)
+            kurz = partie_spielen(
+                seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich,
+                regeln=args.regeln, szenario=args.szenario,
+            )
         except (KontingentErschoepft, KeyboardInterrupt) as fehler:
             if isinstance(fehler, KontingentErschoepft):
                 print(f"\nPartie {i + 1} abgebrochen: Der Anbieter sperrt für lange Zeit.")
@@ -186,9 +253,10 @@ def main() -> None:
             else:
                 print(f"\nPartie {i + 1} mit Strg+C abgebrochen.")
             print("Später weitermachen (gleiche Seeds, abgebrochene Partie wird wiederholt):")
+            szenario = f' --szenario "{args.szenario}"' if args.szenario else ""
             print(
-                f"  python main.py --llm {args.llm} --spieler {args.spieler} "
-                f"--partien {args.partien - i} --seed {seed}"
+                f"  python main.py --regeln {args.regeln}{szenario} --llm {args.llm} "
+                f"--spieler {args.spieler} --partien {args.partien - i} --seed {seed}"
             )
             break
         if not ausfuehrlich:

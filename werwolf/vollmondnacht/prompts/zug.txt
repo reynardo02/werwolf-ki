@@ -1,0 +1,10 @@
+Phase: {phase}
+Mitspieler: {spieler}
+
+Was du in der Nacht erfahren hast:
+{geheimwissen}
+
+Bisheriger Verlauf:
+{ereignisse}
+
+{aufgabe}

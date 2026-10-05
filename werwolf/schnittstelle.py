@@ -10,8 +10,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
 
-from werwolf.roles import Rolle
-
 
 class Phase(Enum):
     NACHT = "Nacht"
@@ -60,7 +58,7 @@ class Zug:
     """Alles, was ein Agent für seine Entscheidung sehen darf."""
 
     ich: str
-    rolle: Rolle
+    rolle: Enum  # Rolle aus werwolf.roles oder werwolf.vollmondnacht.rollen
     runde: int
     phase: Phase
     erlaubte_tools: list[str]
@@ -70,6 +68,9 @@ class Zug:
     ereignisse: list[Ereignis]
     hinweis: str | None = None  # Fehlermeldung, falls der erste Versuch ungültig war
     ziele: list[str] = field(default_factory=list)  # gültige Ziele, leer bei Text-Tools
+    # Für Tools mit mehreren Parametern: Tool -> Parameter -> erlaubte Werte,
+    # z. B. {"vertauschen": {"ziel1": ["Ben", "Clara"], "ziel2": ["Ben", "Clara"]}}.
+    optionen: dict[str, dict[str, list[str]]] = field(default_factory=dict)
 
 
 class Agent(Protocol):

@@ -173,14 +173,28 @@ def test_partie_nur_mit_llm_spielern() -> None:
     client = FakeClient()
     persoenlichkeiten = persoenlichkeiten_laden()
     agenten: dict[str, Agent] = {
-        name: LLMSpieler(client, persoenlichkeiten[i]) for i, name in enumerate(NAMEN)
+        name: LLMSpieler(client, persoenlichkeiten[i], rng=random.Random(i)) for i, name in enumerate(NAMEN)
     }
     engine = Engine(agenten, rng=random.Random(0), rollen=ROLLEN)
     engine.spielen()
 
-    # Jeder wurde gefragt, jeder mit seiner eigenen Persönlichkeit.
+    # Alle bis auf höchstens das erste Nachtopfer wurden gefragt, jeder mit seiner Persönlichkeit.
     systeme = {system for system, _, _ in client.anfragen_liste}
-    for i, name in enumerate(NAMEN):
-        assert any(f"Du bist {name}" in s and persoenlichkeiten[i] in s for s in systeme)
+    gefragt = [i for i, name in enumerate(NAMEN) if any(f"Du bist {name} " in s for s in systeme)]
+    assert len(gefragt) >= len(NAMEN) - 1
+    for i in gefragt:
+        assert any(f"Du bist {NAMEN[i]} " in s and persoenlichkeiten[i] in s for s in systeme)
     # Der vernünftige Fake bleibt immer regelkonform.
     assert not any("Zufallsaktion" in e.text for e in engine.protokoll)
+
+
+def test_namen_werden_gemischt() -> None:
+    """Gegen Positions-Verzerrung: Die Reihenfolge der Ziele ist nicht immer gleich."""
+    spieler = LLMSpieler(FakeClient(), rng=random.Random(1))
+    zug = Zug(
+        ich="Anna", rolle=Rolle.DORFBEWOHNER, runde=1, phase=Phase.ABSTIMMUNG,
+        erlaubte_tools=["abstimmen"], lebende=NAMEN, geheimwissen=[], notizen=[], ereignisse=[],
+    )
+    erste = {spieler.tools(zug)[0].parameter["ziel"]["enum"][0] for _ in range(30)}
+    assert len(erste) > 1
+    assert sorted(spieler.tools(zug)[0].parameter["ziel"]["enum"]) == sorted(NAMEN[1:])

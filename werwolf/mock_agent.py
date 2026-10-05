@@ -24,7 +24,15 @@ class MockAgent:
         self.rng = rng or random.Random()
 
     def handeln(self, zug: Zug) -> Aktion:
+        # Nur bei echter Wahl würfeln, damit alte Partien mit gleichem Seed gleich bleiben.
         tool = zug.erlaubte_tools[0]
+        if len(zug.erlaubte_tools) > 1:
+            tool = self.rng.choice(zug.erlaubte_tools)
+        if tool in zug.optionen:
+            # Jeden Parameter unabhängig würfeln. Das kann ungültig sein (z. B. zweimal
+            # dasselbe Ziel) – auch das testet die Validierung der Engine.
+            parameter = {name: self.rng.choice(werte) for name, werte in zug.optionen[tool].items()}
+            return Aktion(tool, parameter)
         andere = [name for name in zug.lebende if name != zug.ich]
         if tool in ZIEL_TOOLS:
             return Aktion(tool, {"ziel": self.rng.choice(andere), "begruendung": "Zufall"})
