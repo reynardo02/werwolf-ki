@@ -7,6 +7,7 @@ Den eigentlichen LLM-Aufruf erledigt ein `LLMClient` aus core/ – deshalb kennt
 dieses Modul kein SDK und lässt sich mit einem Fake-Client testen.
 """
 
+import random
 from pathlib import Path
 
 from core.gedaechtnis import Erinnerung, kontext_auswaehlen
@@ -81,9 +82,13 @@ class LLMSpieler:
         client: LLMClient,
         persoenlichkeit: str = "ruhig und aufmerksam",
         volle_runden: int = 1,
+        rng: random.Random | None = None,
     ) -> None:
         self.client = client
         self.persoenlichkeit = persoenlichkeit
+        # Zum Mischen von Namenslisten (siehe gemischt). Eigener Generator, damit
+        # die Partie selbst bei gleichem Seed gleich verteilt wird.
+        self.rng = rng or random.Random()
         # Wie viele Runden das LLM komplett sieht. Ältere Diskussionen kennt es
         # nur noch aus seinen eigenen Notizen.
         self.volle_runden = volle_runden
@@ -106,7 +111,7 @@ class LLMSpieler:
         return self._zug_vorlage.format(
             runde=zug.runde,
             phase=zug.phase.value,
-            lebende=", ".join(zug.lebende),
+            lebende=", ".join(self.gemischt(zug.lebende)),
             geheimwissen=_liste(zug.geheimwissen),
             notizen=_liste(zug.notizen),
             ereignisse=_liste([f"[Runde {e.runde}] {e.text}" for e in self.verlauf(zug)]),
@@ -125,7 +130,15 @@ class LLMSpieler:
     def tools(self, zug: Zug) -> list[ToolSchema]:
         # Die Engine nennt die gültigen Ziele (z. B. ohne Mitwerwolf).
         ziele = zug.ziele or [name for name in zug.lebende if name != zug.ich]
-        return tool_schemas(zug.erlaubte_tools, ziele)
+        return tool_schemas(zug.erlaubte_tools, self.gemischt(ziele))
+
+    def gemischt(self, namen: list[str]) -> list[str]:
+        """Namen in zufälliger Reihenfolge.
+
+        Kleine Modelle wählen auffällig oft die erste Option einer Liste
+        (Positions-Verzerrung). Gemischt hat kein Spieler einen Platzvorteil.
+        """
+        return self.rng.sample(namen, len(namen))
 
     def handeln(self, zug: Zug) -> Aktion:
         try:

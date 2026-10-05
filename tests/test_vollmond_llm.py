@@ -60,7 +60,9 @@ def test_prompts_und_tools() -> None:
     assert "Du bist Anna" in system and "Unruhestifterin" in system and "frech" in system
     assert "Im Spiel sind diese 6 Karten" in nachricht
     assert [t.name for t in tools] == [VERTAUSCHEN, NICHTS_TUN]
-    assert tools[0].parameter["ziel1"]["enum"] == ["Ben", "Clara"]
+    assert sorted(tools[0].parameter["ziel1"]["enum"]) == ["Ben", "Clara"]
+    # Gleiche (gemischte) Reihenfolge für beide Ziele.
+    assert tools[0].parameter["ziel1"]["enum"] == tools[0].parameter["ziel2"]["enum"]
     assert tools[1].parameter == {}
     # Die Doppelgängerin liegt in der Mitte, also fragt die Engine nie nach „nachahmen“.
     assert not any(NACHAHMEN in [t.name for t in ts] for _, _, ts in client.anfragen_liste)

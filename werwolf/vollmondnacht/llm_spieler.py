@@ -128,7 +128,7 @@ class VollmondLLMSpieler(LLMSpieler):
             aufgabe += f"\n\nDein letzter Versuch war ungültig: {zug.hinweis} Versuch es noch einmal."
         return self._zug_vorlage.format(
             phase=zug.phase.value,
-            spieler=", ".join(n for n in zug.lebende if n != zug.ich),
+            spieler=", ".join(self.gemischt([n for n in zug.lebende if n != zug.ich])),
             geheimwissen=_liste(zug.geheimwissen),
             # Nur eine Runde: Der ganze Verlauf passt in den Kontext, kein Kürzen nötig.
             ereignisse=_liste([e.text for e in zug.ereignisse]),
@@ -136,11 +136,18 @@ class VollmondLLMSpieler(LLMSpieler):
         )
 
     def tools(self, zug: Zug) -> list[ToolSchema]:
+        # Eine gemischte Reihenfolge pro Zug, für alle Parameter gleich – so stehen
+        # bei der Unruhestifterin ziel1 und ziel2 in derselben Reihenfolge.
+        platz = {name: i for i, name in enumerate(self.gemischt(zug.lebende))}
         schemas = []
         for tool in zug.erlaubte_tools:
             parameter: dict[str, dict[str, Any]] = dict(_TEXT.get(tool, {}))
             for name, werte in zug.optionen.get(tool, {}).items():
-                parameter[name] = {"type": "string", "enum": werte, "description": "Name des Spielers"}
+                parameter[name] = {
+                    "type": "string",
+                    "enum": sorted(werte, key=lambda n: platz.get(n, 0)),
+                    "description": "Name des Spielers",
+                }
             if tool == ABSTIMMEN:
                 parameter["begruendung"] = _BEGRUENDUNG
             pflicht = tuple(p for p in parameter if p != "begruendung")

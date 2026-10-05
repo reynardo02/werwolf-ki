@@ -98,7 +98,9 @@ def partie_spielen(
     persoenlichkeit_von: dict[str, str | None] = {}
     for i, name in enumerate(namen):
         if client and i < anzahl_llm:
-            agenten[name] = llm_klasse(client, persoenlichkeiten[i])
+            # Eigener Zufall pro Spieler aus Seed und Name: verbraucht nichts vom
+            # Zufall der Partie, gleiche Seeds verteilen also gleiche Karten.
+            agenten[name] = llm_klasse(client, persoenlichkeiten[i], rng=random.Random(f"{seed}-{name}"))
             persoenlichkeit_von[name] = persoenlichkeiten[i]
         else:
             agenten[name] = MockAgent(random.Random(rng.random()))
