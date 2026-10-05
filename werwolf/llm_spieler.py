@@ -9,6 +9,7 @@ dieses Modul kein SDK und lässt sich mit einem Fake-Client testen.
 
 from pathlib import Path
 
+from core.gedaechtnis import Erinnerung, kontext_auswaehlen
 from core.llm_client import LLMClient, LLMFehler
 from werwolf.roles import Rolle, Team
 from werwolf.schnittstelle import (
@@ -18,6 +19,7 @@ from werwolf.schnittstelle import (
     PRUEFEN,
     SPRECHEN,
     Aktion,
+    Phase,
     Zug,
 )
 from werwolf.werkzeuge import tool_schemas
@@ -50,14 +52,28 @@ AUFGABEN = {
 }
 
 
+def persoenlichkeiten_laden() -> list[str]:
+    """Liest die Persönlichkeiten aus der Vorlage, eine pro Zeile."""
+    zeilen = (PROMPTS / "persoenlichkeiten.txt").read_text(encoding="utf-8").splitlines()
+    return [z.strip() for z in zeilen if z.strip() and not z.startswith("#")]
+
+
 def _liste(eintraege: list[str], leer: str = "(nichts)") -> str:
     return "\n".join(f"- {e}" for e in eintraege) if eintraege else leer
 
 
 class LLMSpieler:
-    def __init__(self, client: LLMClient, persoenlichkeit: str = "ruhig und aufmerksam") -> None:
+    def __init__(
+        self,
+        client: LLMClient,
+        persoenlichkeit: str = "ruhig und aufmerksam",
+        volle_runden: int = 1,
+    ) -> None:
         self.client = client
         self.persoenlichkeit = persoenlichkeit
+        # Wie viele Runden das LLM komplett sieht. Ältere Diskussionen kennt es
+        # nur noch aus seinen eigenen Notizen.
+        self.volle_runden = volle_runden
         self._system_vorlage = (PROMPTS / "system.txt").read_text(encoding="utf-8")
         self._zug_vorlage = (PROMPTS / "zug.txt").read_text(encoding="utf-8")
 
@@ -80,9 +96,18 @@ class LLMSpieler:
             lebende=", ".join(zug.lebende),
             geheimwissen=_liste(zug.geheimwissen),
             notizen=_liste(zug.notizen),
-            ereignisse=_liste([f"[Runde {e.runde}] {e.text}" for e in zug.ereignisse]),
+            ereignisse=_liste([f"[Runde {e.runde}] {e.text}" for e in self.verlauf(zug)]),
             aufgabe=aufgabe,
         )
+
+    def verlauf(self, zug: Zug) -> list[Erinnerung]:
+        """Gekürzter Spielverlauf: Alte Diskussionsbeiträge fallen weg,
+        Tode, aufgedeckte Rollen und Abstimmungen bleiben."""
+        erinnerungen = [
+            Erinnerung(e.runde, e.text, wichtig=e.phase is not Phase.DISKUSSION)
+            for e in zug.ereignisse
+        ]
+        return kontext_auswaehlen(erinnerungen, zug.runde, self.volle_runden)
 
     def handeln(self, zug: Zug) -> Aktion:
         # Die Engine nennt die gültigen Ziele (z. B. ohne Mitwerwolf).
