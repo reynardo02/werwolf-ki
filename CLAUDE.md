@@ -12,6 +12,12 @@ wird später für eine Agenten-Simulation wiederverwendet.
   Nutzt Schnittstelle, MockAgent, Protokoll und Log von werwolf/ mit.
 - Nur core/llm_client.py importiert das openai-SDK (OpenAI-kompatibles Format).
 - main.py startet eine Partie. logs/ für JSONL und Spielprotokolle.
+- web/: Web-Oberfläche ohne Framework (http.server + eine HTML-Seite). Die Partie läuft in einem
+  Thread, der Browser fragt den Stand per Polling ab. Er bekommt nur Öffentliches und dein Geheimwissen.
+- GitHub Pages: dieselbe Seite, aber Python läuft per Pyodide im Browser (web/browser.py,
+  web/static/pyodide-backend.js). Prinzip „Wiederholen statt Warten“: die Partie wird mit allen
+  bisherigen Antworten von vorn gespielt, bis eine fehlt (dein Zug oder ein LLM-Aufruf per fetch
+  mit dem Key des Spielers). Gemeinsamer Aufbau in werwolf/aufbau.py und web/einstellungen.py.
 
 ## Konventionen
 - Python 3.12, Typ-Hints, dataclasses
@@ -31,6 +37,12 @@ wird später für eine Agenten-Simulation wiederverwendet.
   (`--llm alle` für eine reine LLM-Partie). Protokoll und Log landen in `logs/partie_*.txt/.jsonl`.
 - Viele Partien: `.venv/bin/python main.py --partien 20` (mit `--llm …` kombinierbar)
 - Vollmondnacht: `.venv/bin/python main.py --regeln vollmondnacht --spieler 7 [--szenario Payback]`
+- Selbst mitspielen: `.venv/bin/python main.py --regeln vollmondnacht --mensch [NAME] --llm alle`
+  (Konsole zeigt nur Öffentliches, Geheimnisse danach im Protokoll)
+- Eigene Bilanz: `.venv/bin/python auswerten.py --mensch` (nur Vollmondnacht-Partien mit Mensch)
+- Im Browser spielen: `.venv/bin/python -m web` (öffnet http://127.0.0.1:8000/, `--port`, `--kein-browser`)
+- GitHub Pages: baut .github/workflows/pages.yml bei jedem Push auf main. Lokal bauen:
+  `npm pack pyodide@314.0.7 && tar xzf pyodide-314.0.7.tgz && .venv/bin/python -m web.seite_bauen _site --pyodide package`
 - Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand
@@ -48,6 +60,11 @@ Mit 12 LLM-Partien geprüft: Werwölfe gewinnen alle, das Dorf stimmt bei der ö
 Reihum-Abstimmung schlechter als Zufall (Herdenverhalten).
 Zusatz: Spielvariante Vollmondnacht – umgesetzt (alle 12 Rollen inkl. Doppelgängerin,
 alle Szenarien, VollmondLLMSpieler, eigene Auswertung).
+Meilenstein 5, Teil 1: Selbst mitspielen – umgesetzt (werwolf/mensch_spieler.py, `--mensch`,
+beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe).
+Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server.py, web/static/index.html;
+getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
+Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
@@ -56,6 +73,23 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Das Dorf hielt ehrliche Kartentauscher für Lügner, Werwölfe nutzten den Hinweis aus.
 - Serie 3, Lügen nur für Werwolf/Günstling/Gerber, Ehrlichkeit fürs Dorf: 47,3 %, 4/10. Übernommen.
   Hauptfehler danach: Das Dorf verfolgt nicht, wohin eine Werwolf-Karte getauscht wurde.
-- Positions-Verzerrung behoben (LLMs wählten meist den ersten Namen); Kontrollserie offen.
-- Ideen: Hinweis zum Kartenweg fürs Dorf; Persönlichkeit „lenkt gern vom Thema ab“ schadet.
-Als Nächstes: Meilenstein 5, selbst mitspielen per Eingabe, danach Web-Oberfläche.
+- Positions-Verzerrung behoben (LLMs wählten meist den ersten Namen). Kontrollserie damit:
+  16,4 %, 1/10 – neue Basis. Serie 3 war durch die Verzerrung geschönt bzw. 10 Partien streuen stark.
+  Das Dorf stimmt in der Kontrollserie zu 50 % gegen die Start-Werwölfe, aber nur zu 14 % gegen
+  die End-Werwölfe: In 4 Partien starb der ursprüngliche Werwolf, dessen Karte aber getauscht war.
+- Serie 4, Hinweis zum Kartenweg fürs Dorf (KARTENWEG in vollmondnacht/llm_spieler.py),
+  20 Partien ab Seed 443803: 43,5 % (Zufall 25,9 %), Dorf gewinnt 8/20. Übernommen.
+  Stimmen gegen Start-Werwölfe 44,4 % – die Lücke zur Endkarte ist geschlossen.
+  Siege 1/10 → 8/20 ist allein noch nicht sicher (Fisher-Test p ≈ 0,1), die Stimmen sind deutlicher.
+  Restfehler (Logs 6–20): Kartenweg nur noch 1× übersehen. Häufigster Fehler jetzt: Das Dorf kennt
+  die Nachtreihenfolge nicht und hält ehrliche Tauscher für Lügner (5×, z. B. Räuber raubt
+  Unruhestifterin, die danach noch tauscht). Dazu falsche Behauptungen von Rollen aus der Mitte (4×).
+- Serie 5, Spielleiter sagt allen die Nachtreihenfolge an (karten-Ereignis in vollmondnacht/engine.py):
+  37,4 % (Zufall 26,8 %), Dorf gewinnt 6/20 – kein messbarer Effekt, Unterschied zu Serie 4 im
+  Rauschen. Bleibt drin, weil es der echten Regel entspricht (der Spielleiter ruft laut auf).
+  Logs 1–20: Die Reihenfolge wird nur 2× erwähnt, das Modell nutzt die Ansage kaum. Kartenweg wirkt
+  (3 Siege gegen getauschte Werwölfe). 14 Niederlagen: 9× stirbt ein ehrlicher Spieler mit Info
+  (Tauscher, Seherin, Schlaflose), 3× Kartenweg übersehen, 2× einfacher Dorfbewohner.
+  Prompt-Hinweise stoßen bei gemini-3.5-flash-lite an Grenzen.
+- Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
+Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.

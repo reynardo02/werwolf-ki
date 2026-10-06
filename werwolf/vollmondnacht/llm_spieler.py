@@ -27,6 +27,14 @@ EHRLICH = (
     " Das Dorf gewinnt durch Ehrlichkeit: Sag offen, welche Karte du zu Beginn hattest und "
     "was du nachts getan und gesehen hast. Wurde deine Karte vertauscht, weißt du es eventuell nicht."
 )
+# Experiment 4: Das Dorf erkannte oft den Lügner, stimmte aber gegen ihn, obwohl seine
+# Werwolf-Karte nachts schon bei jemand anderem lag. Deshalb ein Hinweis zum Kartenweg.
+KARTENWEG = (
+    " Verfolge den Weg der Karten: Nachts handelt jeder mit seiner Startkarte, auch wenn sie ihm "
+    "vorher geraubt oder vertauscht wurde – nennen zwei Spieler dieselbe Karte, kann das also "
+    "ehrlich sein. Gewonnen wird aber mit der Endkarte: Wurde ein Werwolf nachts beraubt oder "
+    "vertauscht, liegt seine Werwolf-Karte jetzt beim anderen. Stimme gegen den, der sie jetzt hat."
+)
 
 # Kurze Strategie-Hinweise, angelehnt an die Tipps der Anleitung.
 ROLLEN_HINWEISE = {
@@ -108,7 +116,7 @@ def rollen_hinweis(rolle: Rolle) -> str:
     """Strategie-Hinweis plus, je nach Partei der Startkarte, Lügen oder Ehrlichkeit."""
     if rolle is Rolle.DOPPELGAENGERIN:
         return ROLLEN_HINWEISE[rolle]  # Partei steht erst nach dem Nachahmen fest
-    return ROLLEN_HINWEISE[rolle] + (EHRLICH if rolle.partei is Partei.DORF else LUEGEN)
+    return ROLLEN_HINWEISE[rolle] + (EHRLICH + KARTENWEG if rolle.partei is Partei.DORF else LUEGEN)
 
 
 class VollmondLLMSpieler(LLMSpieler):

@@ -17,7 +17,7 @@ class Partie:
 
     modell: str | None
     rollen: dict[str, str]
-    typen: dict[str, str]  # "llm" oder "mock"
+    typen: dict[str, str]  # "llm", "mock" oder "mensch"
     ereignisse: list[dict[str, Any]]
     gewinner: str | None  # None: Partie wurde abgebrochen
     runden: int
@@ -27,9 +27,9 @@ class Partie:
     def gruppe(self) -> str:
         """Partien werden nach Modell und LLM-Anteil gruppiert."""
         llm = sum(1 for t in self.typen.values() if t == "llm")
-        if not llm:
-            return "nur MockAgenten"
-        return f"{self.modell} ({llm}/{len(self.typen)} Spieler LLM)"
+        gruppe = f"{self.modell} ({llm}/{len(self.typen)} Spieler LLM)" if llm else "nur MockAgenten"
+        # Partien mit Mensch getrennt halten, sonst verfälschen sie die Experimente.
+        return gruppe + (", mit Mensch" if "mensch" in self.typen.values() else "")
 
 
 def partie_aus_log(zeilen: list[dict[str, Any]]) -> Partie:

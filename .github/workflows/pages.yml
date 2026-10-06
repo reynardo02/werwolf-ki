@@ -1,0 +1,49 @@
+# Baut die Browser-Version (Python per Pyodide) und veröffentlicht sie auf GitHub Pages.
+# Einmalig nötig: Repository → Settings → Pages → Source: „GitHub Actions“.
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # von Hand starten: Actions → GitHub Pages → Run workflow
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Einrichten
+        run: pip install -e ".[dev]"
+      - name: Tests (nur veröffentlichen, wenn alles grün ist)
+        run: pytest -q
+      - name: Pyodide holen (Python für den Browser, Version fest)
+        run: |
+          npm pack pyodide@314.0.7
+          tar xzf pyodide-314.0.7.tgz
+      - name: Seite bauen
+        run: python -m web.seite_bauen _site --pyodide package
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  veroeffentlichen:
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

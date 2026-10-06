@@ -69,16 +69,18 @@ def test_prompts_und_tools() -> None:
 
 
 def test_nur_werwoelfe_und_gerber_duerfen_luegen() -> None:
-    from werwolf.vollmondnacht.llm_spieler import EHRLICH, LUEGEN, rollen_hinweis
+    from werwolf.vollmondnacht.llm_spieler import EHRLICH, KARTENWEG, LUEGEN, rollen_hinweis
 
     for rolle in Rolle:
         hinweis = rollen_hinweis(rolle)
         if rolle in (Rolle.WERWOLF, Rolle.GUENSTLING, Rolle.GERBER):
             assert LUEGEN in hinweis and EHRLICH not in hinweis, rolle
+            assert KARTENWEG not in hinweis, rolle  # nur das Dorf bekommt den Hinweis
         elif rolle is Rolle.DOPPELGAENGERIN:
             assert "darfst du lügen" in hinweis  # hängt von der Kopie ab
         else:
             assert EHRLICH in hinweis and LUEGEN not in hinweis, rolle
+            assert KARTENWEG in hinweis, rolle
     # Der Räuber kann nachts zum Werwolf werden und darf dann lügen.
     assert "darfst lügen" in rollen_hinweis(Rolle.RAEUBER)
 

@@ -11,7 +11,6 @@ from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from core.konfig import konfig_laden
 from core.llm_client import (
@@ -20,54 +19,23 @@ from core.llm_client import (
     OpenAIKompatiblerClient,
     Statistik,
 )
-from werwolf.engine import Engine, Ergebnis
+from werwolf.aufbau import (  # noqa: F401 – NAMEN & Co. nutzen auch web/ und die Tests
+    KLASSISCH,
+    NAMEN,
+    SPIELERZAHL,
+    VOLLMONDNACHT,
+    agenten_bauen,
+    engine_bauen,
+    ergebnis_zusammenfassen,
+    kopf_bauen,
+    protokoll_kopf,
+)
 from werwolf.jsonl_log import JsonlLog
-from werwolf.llm_spieler import LLMSpieler, persoenlichkeiten_laden
-from werwolf.mock_agent import MockAgent
 from werwolf.protokoll import Protokoll
 from werwolf.schnittstelle import Agent, Ereignis
-from werwolf.vollmondnacht.engine import VollmondEngine, VollmondErgebnis
-from werwolf.vollmondnacht.llm_spieler import VollmondLLMSpieler
-from werwolf.vollmondnacht.rollen import szenario_karten, szenario_namen
+from werwolf.vollmondnacht.rollen import szenario_namen
 
-NAMEN = ["Anna", "Ben", "Clara", "Dario", "Emil", "Frieda", "Greta", "Hugo", "Ida", "Jonas"]
 LOGS = Path(__file__).parent / "logs"
-KLASSISCH = "klassisch"
-VOLLMONDNACHT = "vollmondnacht"
-SPIELERZAHL = {KLASSISCH: (5, 7), VOLLMONDNACHT: (3, 10)}
-
-
-def engine_bauen(
-    regeln: str, agenten: dict[str, Agent], rng: random.Random, szenario: str,
-    beobachter: Callable[[Ereignis], None],
-) -> tuple[Engine | VollmondEngine, dict[str, str]]:
-    """Baut die Engine der gewählten Variante und gibt die (Start-)Rolle jedes Spielers zurück."""
-    if regeln == VOLLMONDNACHT:
-        karten = szenario_karten(szenario, len(agenten), rng)
-        engine = VollmondEngine(agenten, karten, rng=rng, beobachter=beobachter)
-        return engine, {s.name: s.startrolle.value for s in engine.spieler.values()}
-    klassisch = Engine(agenten, rng=rng, beobachter=beobachter)
-    return klassisch, {s.name: s.rolle.value for s in klassisch.spieler.values()}
-
-
-def ergebnis_zusammenfassen(ergebnis: Ergebnis | VollmondErgebnis) -> tuple[str, list[str], dict[str, Any]]:
-    """Kurzfassung, Zeilen fürs Protokoll und Daten fürs Log."""
-    if isinstance(ergebnis, VollmondErgebnis):
-        gewinner = " und ".join(sorted(p.value for p in ergebnis.gewinner)) or "Niemand"
-        tote = f"tot: {', '.join(ergebnis.tote)}" if ergebnis.tote else "niemand stirbt"
-        kurz = f"{gewinner} gewinnt ({tote})"
-        zeilen = [f"{kurz}.", f"Sieger: {', '.join(ergebnis.sieger) or 'niemand'}"]
-        daten = {
-            "gewinner": sorted(p.value for p in ergebnis.gewinner),
-            "sieger": ergebnis.sieger,
-            "tote": ergebnis.tote,
-            "endrollen": {n: r.value for n, r in ergebnis.endrollen.items()},
-        }
-        return kurz, zeilen, daten
-    kurz = f"{ergebnis.gewinner.value} gewinnen nach {ergebnis.runden} Runden"
-    zeilen = [f"{kurz}.", f"Überlebende: {', '.join(ergebnis.ueberlebende)}"]
-    daten = {"gewinner": ergebnis.gewinner.value, "runden": ergebnis.runden, "ueberlebende": ergebnis.ueberlebende}
-    return kurz, zeilen, daten
 
 
 def partie_spielen(
@@ -80,8 +48,19 @@ def partie_spielen(
     ordner: Path = LOGS,
     regeln: str = KLASSISCH,
     szenario: str | None = None,
+    mensch: str | None = None,
+    mensch_spieler: Agent | None = None,
+    beobachter_extra: Callable[[Ereignis], None] | None = None,
+    konsole: bool = True,
 ) -> str:
-    """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück."""
+    """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück.
+
+    `mensch`: Name des Platzes, an dem du selbst per Tastatur spielst. Dann zeigt die
+    Konsole nur, was öffentlich am Tisch passiert – Rollen und Geheimnisse stehen erst
+    hinterher im Protokoll.
+    `beobachter_extra` bekommt zusätzlich jedes Ereignis (z. B. für die Web-Oberfläche),
+    `konsole=False` schaltet die Ausgabe auf der Konsole ab.
+    """
     rng = random.Random(seed)
     namen = NAMEN[:anzahl_spieler]
     if client:
@@ -90,25 +69,18 @@ def partie_spielen(
     if regeln == VOLLMONDNACHT and szenario is None:
         szenario = szenario_namen(anzahl_spieler)[0]
 
-    # Jeder LLM-Spieler bekommt eine andere, zufällige Persönlichkeit.
-    # Die Rollen werden zufällig verteilt, daher ist egal, welche Namen das LLM bekommt.
-    persoenlichkeiten = rng.sample(persoenlichkeiten_laden(), anzahl_llm)
-    llm_klasse = VollmondLLMSpieler if regeln == VOLLMONDNACHT else LLMSpieler
-    agenten: dict[str, Agent] = {}
-    persoenlichkeit_von: dict[str, str | None] = {}
-    for i, name in enumerate(namen):
-        if client and i < anzahl_llm:
-            # Eigener Zufall pro Spieler aus Seed und Name: verbraucht nichts vom
-            # Zufall der Partie, gleiche Seeds verteilen also gleiche Karten.
-            agenten[name] = llm_klasse(client, persoenlichkeiten[i], rng=random.Random(f"{seed}-{name}"))
-            persoenlichkeit_von[name] = persoenlichkeiten[i]
-        else:
-            agenten[name] = MockAgent(random.Random(rng.random()))
-            persoenlichkeit_von[name] = None
+    besetzung = agenten_bauen(seed, rng, namen, anzahl_llm, client, regeln, mensch, mensch_spieler)
+    agenten, typ_von = besetzung.agenten, besetzung.typ_von
 
-    protokoll = Protokoll(ausgabe=print if ausfuehrlich else None)
+    # Spielst du selbst mit, darf die Konsole nichts Geheimes zeigen.
+    protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch and konsole else None)
     # Die Engine hat einen Beobachter, wir verteilen an Protokoll und Log.
     beobachter: list[Callable[[Ereignis], None]] = [protokoll]
+    if beobachter_extra:
+        beobachter.append(beobachter_extra)
+    if mensch and konsole:
+        tisch = Protokoll(ausgabe=print)
+        beobachter.append(lambda e: tisch(e) if e.oeffentlich else None)
 
     def beobachten(ereignis: Ereignis) -> None:
         for b in beobachter:
@@ -116,39 +88,15 @@ def partie_spielen(
 
     engine, rolle_von = engine_bauen(regeln, agenten, rng, szenario or "", beobachten)
     modell = client.modell if client else None
-    kopf: dict[str, Any] = {
-        "zeit": datetime.now().isoformat(timespec="seconds"),
-        "regeln": regeln,
-        "modell": modell,
-        "seed": seed,
-        "spieler": [
-            {
-                "name": name,
-                "rolle": rolle_von[name],
-                "typ": "llm" if persoenlichkeit_von[name] else "mock",
-                "persoenlichkeit": persoenlichkeit_von[name],
-            }
-            for name in namen
-        ],
-    }
-    if isinstance(engine, VollmondEngine):
-        kopf["szenario"] = szenario
-        kopf["mitte"] = [r.value for r in engine.mitte]
+    kopf = kopf_bauen(regeln, modell, seed, namen, rolle_von, besetzung, engine, szenario)
     log = JsonlLog(ordner / f"{dateiname}.jsonl", kopf)
     beobachter.append(log)
 
-    titel = f"Werwolf ({regeln}) – {datetime.now():%d.%m.%Y %H:%M} – Seed {seed}"
-    if szenario:
-        titel += f" – Szenario: {szenario}"
-    if modell:
-        titel += f" – Modell: {modell}"
-    besetzung = [
-        f"{n}: {rolle_von[n]} ({f'LLM, {persoenlichkeit_von[n]}' if persoenlichkeit_von[n] else 'MockAgent'})"
-        for n in namen
-    ]
-    if "mitte" in kopf:
-        besetzung.append(f"Mitte: {', '.join(kopf['mitte'])}")
-    protokoll.kopf(titel, besetzung)
+    titel, zeilen = protokoll_kopf(kopf)
+    protokoll.kopf(titel, zeilen)
+    if mensch and konsole:
+        andere = ", ".join(f"{n} ({'LLM' if typ_von[n] == 'llm' else 'MockAgent'})" for n in namen if n != mensch)
+        print(f"{titel}\nDu spielst als {mensch}. Am Tisch: {andere}.")
 
     try:
         kurz, zeilen, daten = ergebnis_zusammenfassen(engine.spielen())
@@ -209,6 +157,10 @@ def main() -> None:
         "--llm", default="0", help="Wie viele Spieler das LLM steuert, Zahl oder 'alle' (Rest: MockAgent)"
     )
     parser.add_argument("--partien", type=int, default=1, help="Wie viele Partien nacheinander")
+    parser.add_argument(
+        "--mensch", nargs="?", const=NAMEN[0], default=None, metavar="NAME",
+        help=f"Selbst mitspielen per Tastatur, optional mit Platz-Name (Standard: {NAMEN[0]})",
+    )
     args = parser.parse_args()
 
     minimum, maximum = SPIELERZAHL[args.regeln]
@@ -222,9 +174,13 @@ def main() -> None:
                 f"Szenario '{args.szenario}' gibt es nicht für {args.spieler} Spieler. "
                 f"Möglich: {', '.join(szenario_namen(args.spieler))}"
             )
-    anzahl_llm = args.spieler if args.llm == "alle" else int(args.llm) if args.llm.isdigit() else -1
-    if not 0 <= anzahl_llm <= args.spieler:
-        parser.error("--llm muss 'alle' oder eine Zahl zwischen 0 und --spieler sein")
+    if args.mensch is not None and args.mensch not in NAMEN[:args.spieler]:
+        parser.error(f"--mensch: Name muss einer von {', '.join(NAMEN[:args.spieler])} sein")
+    # Mit dir am Tisch bleibt ein Platz weniger für das LLM.
+    plaetze = args.spieler - (args.mensch is not None)
+    anzahl_llm = plaetze if args.llm == "alle" else int(args.llm) if args.llm.isdigit() else -1
+    if not 0 <= anzahl_llm <= plaetze:
+        parser.error(f"--llm muss 'alle' oder eine Zahl zwischen 0 und {plaetze} sein")
     if args.partien < 1:
         parser.error("--partien muss mindestens 1 sein")
 
@@ -244,7 +200,7 @@ def main() -> None:
         try:
             kurz = partie_spielen(
                 seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich,
-                regeln=args.regeln, szenario=args.szenario,
+                regeln=args.regeln, szenario=args.szenario, mensch=args.mensch,
             )
         except (KontingentErschoepft, KeyboardInterrupt) as fehler:
             if isinstance(fehler, KontingentErschoepft):
@@ -259,7 +215,9 @@ def main() -> None:
                 f"--spieler {args.spieler} --partien {args.partien - i} --seed {seed}"
             )
             break
-        if not ausfuehrlich:
+        if args.mensch:
+            print(f"\nErgebnis: {kurz}. Alle Geheimnisse stehen im Protokoll: logs/{dateiname}.txt")
+        elif not ausfuehrlich:
             print(f"Partie {i + 1}/{args.partien} (Seed {seed}): {kurz}")
 
     print(f"\nLogs gespeichert in {LOGS}/partie_{zeitstempel}*")
