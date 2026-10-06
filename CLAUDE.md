@@ -95,5 +95,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   z. B. „Seherin, eine Mittelkarte angesehen“ (unmöglich: Seherin sieht 1 Spielerkarte oder
   2 Mittelkarten), und das Dorf merkte es nicht. Jetzt stehen die Fähigkeiten aller Rollen der
   Partie im Systemprompt (FAEHIGKEITEN in vollmondnacht/rollen.py). Wirkung noch nicht gemessen.
+- Fix: Manche Spieler nannten nie ihre Startkarte. Jetzt verlangt die erste Wortmeldung
+  Startkarte und Nachtaktion (ERSTE_REDE in vollmondnacht/llm_spieler.py). Wirkung noch nicht gemessen.
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
