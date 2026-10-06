@@ -202,3 +202,10 @@ def test_regeln_erklaeren_die_nachtreihenfolge() -> None:
         assert "sieht sie so, wie sie in diesem Moment ist" in system
         # Die Rollenliste steht wirklich in Nachtreihenfolge.
         assert system.index("- Werwolf:") < system.index("- Seherin:") < system.index("- Räuber:")
+
+
+def test_werwolf_soll_die_gesehene_mittelkarte_behaupten() -> None:
+    # Eigene Partie 522974: Der Wolf sah die Seherin in der Mitte und behauptete trotzdem Schlaflose.
+    hinweis = ROLLEN_HINWEISE[Rolle.WERWOLF]
+    assert "Mittelkarte angesehen" in hinweis
+    assert "auch die Seherin" in hinweis

@@ -49,10 +49,14 @@ NEUE_PARTEI = (
 ROLLEN_HINWEISE = {
     # Serie 7: 27 von 29 Werwölfen behaupteten „Seherin“ – oft beide Wölfe zugleich oder gegen
     # die echte Seherin. Daher konkreter, wie in der Anleitung: Rolle aus der Mitte wählen.
+    # Eigene Partie 522974: Wolf sah die Seherin in der Mitte, behauptete trotzdem Schlaflose
+    # (die echte saß am Tisch) – die Seherin-Warnung schreckte auch hier ab.
     Rolle.WERWOLF: (
         "Du gehörst zum Werwolfsrudel. Behaupte eine andere Rolle und lenke den Verdacht auf andere. "
         "Am sichersten ist eine Rolle, deren Karte in der Mitte liegt – dann widerspricht dir niemand. "
         "Die Seherin ist riskant: Sitzt die echte Seherin am Tisch, widerspricht sie dir sofort. "
+        "Hast du nachts eine Mittelkarte angesehen, ist genau diese Rolle deine sicherste Behauptung – "
+        "auch die Seherin, denn dann sitzt sie sicher nicht am Tisch. "
         "Hat ein anderer schon eine Rolle behauptet, die es nur einmal gibt, behaupte nicht dieselbe. "
         "Kein Werwolf darf sterben."
     ),
