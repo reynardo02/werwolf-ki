@@ -210,6 +210,8 @@ def test_werwolf_soll_die_gesehene_mittelkarte_behaupten() -> None:
     assert "Mittelkarte angesehen" in hinweis
     # Serie 11, Partie 3: Mit Beispiel statt „auch die Seherin“, das auf die Seherin lenkte.
     assert "Betrunkener gesehen → behaupte Betrunkener" in hinweis
+    # Serie 12: Wölfe verrieten die gesehene Mittelkarte und damit sich selbst.
+    assert "Erwähne aber nie, dass oder welche Mittelkarte du gesehen hast" in hinweis
 
 
 def test_eigene_reden_und_stimmen_sind_als_du_markiert() -> None:

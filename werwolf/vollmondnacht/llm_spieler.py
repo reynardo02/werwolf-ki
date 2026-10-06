@@ -53,6 +53,7 @@ ROLLEN_HINWEISE = {
     # (die echte saß am Tisch) – die Seherin-Warnung schreckte auch hier ab.
     # Serie 11, Partie 3: „auch die Seherin“ lenkte auf die Seherin, obwohl der Wolf den
     # Betrunkenen gesehen hatte – daher jetzt ein Beispiel.
+    # Serie 12: Wölfe verrieten dabei ihre Mittelkarte („weil der Räuber sicher in der Mitte lag“).
     Rolle.WERWOLF: (
         "Du gehörst zum Werwolfsrudel. Behaupte eine andere Rolle und lenke den Verdacht auf andere. "
         "Am sichersten ist eine Rolle, deren Karte in der Mitte liegt – dann widerspricht dir niemand. "
@@ -60,6 +61,8 @@ ROLLEN_HINWEISE = {
         "Hast du nachts eine Mittelkarte angesehen, behaupte genau die Rolle auf dieser Karte "
         "(z. B. Betrunkener gesehen → behaupte Betrunkener). Hast du die Seherin gesehen, "
         "kannst du sicher Seherin behaupten. "
+        "Erwähne aber nie, dass oder welche Mittelkarte du gesehen hast – das wissen nur Werwölfe "
+        "und die Seherin. "
         "Hat ein anderer schon eine Rolle behauptet, die es nur einmal gibt, behaupte nicht dieselbe. "
         "Kein Werwolf darf sterben."
     ),
