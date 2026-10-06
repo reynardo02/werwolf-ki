@@ -105,9 +105,15 @@
       <h2>LLM-Zugang</h2>
       <p class="leer" style="margin:0">
         Hier läuft alles in deinem Browser. Für LLM-Mitspieler brauchst du einen eigenen API-Key
-        (z. B. kostenlos bei Google AI Studio). Er wird nur an den Anbieter geschickt.
+        (z. B. kostenlos bei Google AI Studio oder bei OpenAI). Er wird nur an den Anbieter geschickt.
         Ohne Key: „LLM-Mitspieler: keine“ wählen.
       </p>
+      <label for="anbieter">Anbieter</label>
+      <select id="anbieter">
+        <option value="gemini">Google Gemini</option>
+        <option value="openai">OpenAI</option>
+        <option value="eigene">Eigene Einstellung</option>
+      </select>
       <label for="basis">Adresse (OpenAI-kompatibel)</label>
       <input id="basis" value="https://generativelanguage.googleapis.com/v1beta/openai/">
       <div class="zeile">
@@ -161,11 +167,26 @@ async function modusErkennen() {
 }
 
 // --- LLM-Zugang (nur Browser-Modus) --------------------------------------
-const ZUGANG = ["basis", "modell", "tempo"];
+const ZUGANG = ["anbieter", "basis", "modell", "tempo"];
+
+// Vorlagen pro Anbieter. GPT-5-Modelle nehmen nur temperature=1 an (Serie 9/10),
+// Gemini bleibt bei 0,9 wie in den Konsolen-Partien.
+const ANBIETER = {
+  gemini: { basis: "https://generativelanguage.googleapis.com/v1beta/openai/", modell: "gemini-3.5-flash-lite", temperatur: 0.9 },
+  openai: { basis: "https://api.openai.com/v1", modell: "gpt-5.4-mini", temperatur: 1 },
+};
+
+function anbieterWaehlen() {
+  const vorlage = ANBIETER[$("anbieter").value];
+  if (!vorlage) return;  // „Eigene Einstellung“: Felder bleiben, wie sie sind
+  $("basis").value = vorlage.basis;
+  $("modell").value = vorlage.modell;
+}
 
 function zugangLesen() {
   const z = Object.fromEntries(ZUGANG.map((id) => [id, $(id).value.trim()]));
   z.key = $("key").value.trim();
+  z.temperatur = ANBIETER[z.anbieter]?.temperatur;  // bei „Eigene“: unverändert lassen
   try {  // Merken nur auf Wunsch – sonst bleibt der Key nur bis zum Neuladen im Speicher.
     const daten = { ...z, key: $("merken").checked ? z.key : "" };
     localStorage.setItem("werwolf-zugang", JSON.stringify(daten));
@@ -178,9 +199,19 @@ function zugangLaden() {
     const z = JSON.parse(localStorage.getItem("werwolf-zugang") || "{}");
     // „15“ war der alte Standard fürs Tempolimit – gemerkt heißt das nicht „gewollt“.
     if (z.tempo === "15") delete z.tempo;
+    // Ältere Speicherstände kennen keinen Anbieter: aus der Adresse ableiten.
+    if (!z.anbieter && z.basis) {
+      z.anbieter = Object.keys(ANBIETER).find((a) => ANBIETER[a].basis === z.basis) || "eigene";
+    }
     for (const id of ZUGANG) if (z[id]) $(id).value = z[id];
     if (z.key) { $("key").value = z.key; $("merken").checked = true; }
   } catch { /* nichts gespeichert */ }
+}
+
+$("anbieter").addEventListener("change", anbieterWaehlen);
+// Wer Adresse oder Modell von Hand ändert, hat eine eigene Einstellung.
+for (const id of ["basis", "modell"]) {
+  $(id).addEventListener("input", () => { $("anbieter").value = "eigene"; });
 }
 
 // --- Formular -------------------------------------------------------------
