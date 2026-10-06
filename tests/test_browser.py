@@ -105,3 +105,25 @@ def test_laeuft_ohne_openai_sdk() -> None:
     )
     ergebnis = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
     assert ergebnis.stdout.strip() == "ok", ergebnis.stderr
+
+
+def test_seite_bauen(tmp_path) -> None:
+    import zipfile
+
+    from web.seite_bauen import PYODIDE_DATEIEN, bauen
+
+    pyodide = tmp_path / "pyodide-paket"
+    pyodide.mkdir()
+    for datei in PYODIDE_DATEIEN:
+        (pyodide / datei).write_text("platzhalter")
+    ziel = tmp_path / "site"
+    bauen(ziel, pyodide)
+
+    seite = (ziel / "index.html").read_text(encoding="utf-8")
+    assert '<meta name="werwolf-modus" content="browser">' in seite
+    assert (ziel / "pyodide-backend.js").exists() and (ziel / ".nojekyll").exists()
+    assert all((ziel / "pyodide" / d).exists() for d in PYODIDE_DATEIEN)
+    namen = zipfile.ZipFile(ziel / "werwolf-ki.zip").namelist()
+    assert "web/browser.py" in namen and "werwolf/prompts/persoenlichkeiten.txt" in namen
+    assert "werwolf/vollmondnacht/prompts/system.txt" in namen
+    assert not any("__pycache__" in n or n.startswith("tests/") or "static/" in n for n in namen)

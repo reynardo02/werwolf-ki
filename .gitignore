@@ -3,3 +3,6 @@
 __pycache__/
 logs/
 *.egg-info/
+_site/
+package/
+pyodide-*.tgz

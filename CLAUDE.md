@@ -14,6 +14,10 @@ wird später für eine Agenten-Simulation wiederverwendet.
 - main.py startet eine Partie. logs/ für JSONL und Spielprotokolle.
 - web/: Web-Oberfläche ohne Framework (http.server + eine HTML-Seite). Die Partie läuft in einem
   Thread, der Browser fragt den Stand per Polling ab. Er bekommt nur Öffentliches und dein Geheimwissen.
+- GitHub Pages: dieselbe Seite, aber Python läuft per Pyodide im Browser (web/browser.py,
+  web/static/pyodide-backend.js). Prinzip „Wiederholen statt Warten“: die Partie wird mit allen
+  bisherigen Antworten von vorn gespielt, bis eine fehlt (dein Zug oder ein LLM-Aufruf per fetch
+  mit dem Key des Spielers). Gemeinsamer Aufbau in werwolf/aufbau.py und web/einstellungen.py.
 
 ## Konventionen
 - Python 3.12, Typ-Hints, dataclasses
@@ -37,6 +41,8 @@ wird später für eine Agenten-Simulation wiederverwendet.
   (Konsole zeigt nur Öffentliches, Geheimnisse danach im Protokoll)
 - Eigene Bilanz: `.venv/bin/python auswerten.py --mensch` (nur Vollmondnacht-Partien mit Mensch)
 - Im Browser spielen: `.venv/bin/python -m web` (öffnet http://127.0.0.1:8000/, `--port`, `--kein-browser`)
+- GitHub Pages: baut .github/workflows/pages.yml bei jedem Push auf main. Lokal bauen:
+  `npm pack pyodide@314.0.7 && tar xzf pyodide-314.0.7.tgz && .venv/bin/python -m web.seite_bauen _site --pyodide package`
 - Auswertung: `.venv/bin/python auswerten.py` (alle Logs) oder mit Muster, z. B. `"logs/partie_2026*.jsonl"`
 
 ## Aktueller Stand
@@ -58,6 +64,7 @@ Meilenstein 5, Teil 1: Selbst mitspielen – umgesetzt (werwolf/mensch_spieler.p
 beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe).
 Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server.py, web/static/index.html;
 getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
+Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).

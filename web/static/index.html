@@ -60,6 +60,7 @@
   <section>
     <h2>Am Tisch</h2>
     <div id="banner"></div>
+    <p id="status" class="warten"></p>
     <div id="tisch"><p class="leer">Starte rechts eine neue Partie.</p></div>
   </section>
 
@@ -99,6 +100,32 @@
         <button type="submit">Partie starten</button>
       </form>
     </section>
+
+    <section id="zugang" style="margin-top:16px" hidden>
+      <h2>LLM-Zugang</h2>
+      <p class="leer" style="margin:0">
+        Hier läuft alles in deinem Browser. Für LLM-Mitspieler brauchst du einen eigenen API-Key
+        (z. B. kostenlos bei Google AI Studio). Er wird nur an den Anbieter geschickt.
+        Ohne Key: „LLM-Mitspieler: keine“ wählen.
+      </p>
+      <label for="basis">Adresse (OpenAI-kompatibel)</label>
+      <input id="basis" value="https://generativelanguage.googleapis.com/v1beta/openai/">
+      <div class="zeile">
+        <div>
+          <label for="modell">Modell</label>
+          <input id="modell" value="gemini-3.5-flash-lite">
+        </div>
+        <div>
+          <label for="tempo">Anfragen pro Minute</label>
+          <input id="tempo" type="number" min="0" value="15">
+        </div>
+      </div>
+      <label for="key">API-Key</label>
+      <input id="key" type="password" autocomplete="off" placeholder="nur für LLM-Mitspieler nötig">
+      <label style="display:flex; gap:8px; align-items:center">
+        <input id="merken" type="checkbox" style="width:auto"> Key in diesem Browser merken
+      </label>
+    </section>
   </div>
 </main>
 
@@ -106,6 +133,53 @@
 // Stand im Browser: wie viele Ereignisse wir schon zeigen und welche Frage gerade offen ist.
 let anzahl = 0, letztePhase = null, frageJson = null, ich = null, timer = null;
 const $ = (id) => document.getElementById(id);
+
+// --- Server oder Browser? -------------------------------------------------
+// Lokal (python -m web) beantwortet ein Python-Server die /api-Adressen. Auf GitHub Pages
+// gibt es keinen Server: Dann übernimmt pyodide-backend.js mit Python im Browser.
+let backend = null;
+
+async function api(pfad, daten) {
+  if (backend) return backend.api(pfad, daten);
+  const antwort = await fetch(pfad, daten === undefined ? undefined : { method: "POST", body: JSON.stringify(daten) });
+  return { status: antwort.status, daten: await antwort.json() };
+}
+
+async function modusErkennen() {
+  // Die GitHub-Pages-Fassung ist beim Bauen markiert (web/seite_bauen.py) – dort gar nicht erst fragen.
+  const nurBrowser = document.querySelector('meta[name="werwolf-modus"][content="browser"]');
+  if (!nurBrowser) try {
+    const antwort = await fetch("/api/optionen?spieler=7");
+    if (antwort.ok && (antwort.headers.get("Content-Type") || "").includes("json")) return;
+  } catch { /* kein Server erreichbar */ }
+  $("status").textContent = "Lade Python im Browser … (beim ersten Mal ca. 13 MB)";
+  zugangLaden();  // vor dem Start: Eine gespeicherte Partie braucht den Key sofort
+  $("zugang").hidden = false;
+  backend = await import("./pyodide-backend.js");
+  await backend.starten({ zugang: zugangLesen });
+  $("status").textContent = "";
+}
+
+// --- LLM-Zugang (nur Browser-Modus) --------------------------------------
+const ZUGANG = ["basis", "modell", "tempo"];
+
+function zugangLesen() {
+  const z = Object.fromEntries(ZUGANG.map((id) => [id, $(id).value.trim()]));
+  z.key = $("key").value.trim();
+  try {  // Merken nur auf Wunsch – sonst bleibt der Key nur bis zum Neuladen im Speicher.
+    const daten = { ...z, key: $("merken").checked ? z.key : "" };
+    localStorage.setItem("werwolf-zugang", JSON.stringify(daten));
+  } catch { /* privater Modus: dann eben nicht merken */ }
+  return z;
+}
+
+function zugangLaden() {
+  try {
+    const z = JSON.parse(localStorage.getItem("werwolf-zugang") || "{}");
+    for (const id of ZUGANG) if (z[id]) $(id).value = z[id];
+    if (z.key) { $("key").value = z.key; $("merken").checked = true; }
+  } catch { /* nichts gespeichert */ }
+}
 
 // --- Formular -------------------------------------------------------------
 const GRENZEN = { vollmondnacht: [3, 10], klassisch: [5, 7] };
@@ -116,7 +190,7 @@ async function optionenLaden() {
   feld.min = min; feld.max = max;
   feld.value = Math.min(max, Math.max(min, Number(feld.value) || 7));
   const n = Number(feld.value);
-  const antwort = await fetch(`/api/optionen?spieler=${n}`).then((r) => r.json());
+  const antwort = (await api(`/api/optionen?spieler=${n}`)).daten;
   fuellen($("ich"), antwort.namen);
   fuellen($("szenario"), antwort.szenarien);
   fuellen($("llm"), ["alle", ...Array.from({ length: n }, (_, i) => String(i))],
@@ -139,8 +213,8 @@ $("neu").addEventListener("submit", async (e) => {
     regeln: $("regeln").value, spieler: Number($("spieler").value), llm: $("llm").value,
     ich: $("ich").value, szenario: $("regeln").value === "vollmondnacht" ? $("szenario").value : null,
   };
-  const antwort = await fetch("/api/neu", { method: "POST", body: JSON.stringify(daten) });
-  if (!antwort.ok) { zeigeBanner((await antwort.json()).fehler, "fehler"); return; }
+  const antwort = await api("/api/neu", daten);
+  if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
   anzahl = 0; letztePhase = null; frageJson = null;
   $("tisch").replaceChildren();
   $("banner").replaceChildren();
@@ -151,9 +225,10 @@ $("neu").addEventListener("submit", async (e) => {
 async function abfragen() {
   clearTimeout(timer);
   try {
-    const z = await fetch(`/api/zustand?seit=${anzahl}`).then((r) => r.json());
+    const z = (await api(`/api/zustand?seit=${anzahl}`)).daten;
     if (z.laeuft) zeichnen(z);
-    if (z.laeuft && !z.ende && !z.fehler) timer = setTimeout(abfragen, 1000);
+    $("status").textContent = z.status || "";
+    if (z.laeuft && !z.ende && !z.fehler) timer = setTimeout(abfragen, backend ? 300 : 1000);
   } catch {
     zeigeBanner("Server nicht erreichbar – läuft python -m web noch?", "fehler");
   }
@@ -176,10 +251,24 @@ function zeichnen(z) {
   const neu = JSON.stringify(z.frage);
   if (neu !== frageJson) { frageJson = neu; zugAnzeigen(z.frage); }
 
-  if (z.fehler) zeigeBanner(`Fehler: ${z.fehler}`, "fehler");
-  else if (z.ende) {
+  if (z.fehler) {
+    zeigeBanner(`Fehler: ${z.fehler}`, "fehler");
+    if (z.wiederholbar) {  // z. B. Netzwerk- oder Tempolimit-Fehler beim LLM
+      const knopf = Object.assign(document.createElement("button"), { textContent: "Erneut versuchen" });
+      knopf.addEventListener("click", async () => { await api("/api/weiter", {}); $("banner").replaceChildren(); abfragen(); });
+      $("banner").append(knopf);
+    }
+  } else if (z.ende) {
     const du = z.gewonnen === true ? "Du hast gewonnen! " : z.gewonnen === false ? "Du hast verloren. " : "";
-    zeigeBanner(`${du}Ergebnis: ${z.ende}. Alle Geheimnisse stehen im Protokoll ${z.protokoll}.`, "ende");
+    const wo = z.protokoll ? ` Alle Geheimnisse stehen im Protokoll ${z.protokoll}.` : " Alle Geheimnisse stehen im Protokoll:";
+    zeigeBanner(`${du}Ergebnis: ${z.ende}.${wo}`, "ende");
+    for (const d of z.downloads || []) {  // Browser-Modus: Dateien zum Herunterladen
+      const link = Object.assign(document.createElement("a"), {
+        href: URL.createObjectURL(new Blob([d.text], { type: "text/plain" })), download: d.name, textContent: d.name,
+      });
+      link.style.marginRight = "12px";
+      $("banner").firstChild.append(document.createElement("br"), link);
+    }
     $("zug").replaceChildren();
   }
 }
@@ -258,7 +347,7 @@ function zugAnzeigen(frage) {
     const parameter = { ...werte };
     const text = bereich.querySelector("textarea");
     if (tool.text) parameter.text = text.value.trim();
-    await fetch("/api/aktion", { method: "POST", body: JSON.stringify({ tool: tool.name, parameter }) });
+    await api("/api/aktion", { tool: tool.name, parameter, nummer: frage.nummer });
     abfragen();
   });
 
@@ -279,8 +368,10 @@ function wahlknoepfe(moeglich, gewaehlt) {
   return leiste;
 }
 
-optionenLaden();
-abfragen();  // Läuft schon eine Partie (z. B. nach Neuladen der Seite), weiter anzeigen.
+modusErkennen()
+  .then(optionenLaden)
+  .then(abfragen)  // Läuft schon eine Partie (z. B. nach Neuladen der Seite), weiter anzeigen.
+  .catch((fehler) => zeigeBanner(`Start fehlgeschlagen: ${fehler}`, "fehler"));
 </script>
 </body>
 </html>
