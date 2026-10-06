@@ -134,4 +134,9 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Widersprüchen oft den falschen Schluss. Nebenwirkung von _danach_hinweis: Räuber, die sagen „meine Karte
   kann sich noch geändert haben“, wirken auf andere wie Ausreden (Partie 3).
   Nächster Schritt: Serie 9 mit stärkerem Modell, sonst unverändert.
-Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
+- Serie 9, gpt-5.4-mini statt gemini-3.5-flash-lite (dazu LLM_TEMPERATUR=1, weil GPT-5-Modelle oft nur 1
+  annehmen), sonst wie Serie 8, 20 Partien ab Seed 443803: 69,4 % (Zufall 25,6 %), Start-Werwölfe 49,1 %,
+  Dorf gewinnt 14/20 (Serie 8: 6/20, Fisher p ≈ 0,03). Das Modell war der Flaschenhals, nicht die Prompts.
+  Achtung: Auch die Werwölfe spielen mit dem stärkeren Modell – trotzdem gewinnt das Dorf deutlich öfter.
+  Logs noch nicht im Detail ausgewertet.
+Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
