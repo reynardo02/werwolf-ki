@@ -20,55 +20,22 @@ from core.llm_client import (
     OpenAIKompatiblerClient,
     Statistik,
 )
-from werwolf.engine import Engine, Ergebnis
+from werwolf.aufbau import (  # noqa: F401 – NAMEN & Co. nutzen auch web/ und die Tests
+    KLASSISCH,
+    NAMEN,
+    SPIELERZAHL,
+    VOLLMONDNACHT,
+    agenten_bauen,
+    engine_bauen,
+    ergebnis_zusammenfassen,
+)
 from werwolf.jsonl_log import JsonlLog
-from werwolf.llm_spieler import LLMSpieler, persoenlichkeiten_laden
-from werwolf.mensch_spieler import MenschSpieler
-from werwolf.mock_agent import MockAgent
 from werwolf.protokoll import Protokoll
 from werwolf.schnittstelle import Agent, Ereignis
-from werwolf.vollmondnacht.engine import VollmondEngine, VollmondErgebnis
-from werwolf.vollmondnacht.llm_spieler import VollmondLLMSpieler
-from werwolf.vollmondnacht.rollen import szenario_karten, szenario_namen
+from werwolf.vollmondnacht.engine import VollmondEngine
+from werwolf.vollmondnacht.rollen import szenario_namen
 
-NAMEN = ["Anna", "Ben", "Clara", "Dario", "Emil", "Frieda", "Greta", "Hugo", "Ida", "Jonas"]
 LOGS = Path(__file__).parent / "logs"
-KLASSISCH = "klassisch"
-VOLLMONDNACHT = "vollmondnacht"
-SPIELERZAHL = {KLASSISCH: (5, 7), VOLLMONDNACHT: (3, 10)}
-
-
-def engine_bauen(
-    regeln: str, agenten: dict[str, Agent], rng: random.Random, szenario: str,
-    beobachter: Callable[[Ereignis], None],
-) -> tuple[Engine | VollmondEngine, dict[str, str]]:
-    """Baut die Engine der gewählten Variante und gibt die (Start-)Rolle jedes Spielers zurück."""
-    if regeln == VOLLMONDNACHT:
-        karten = szenario_karten(szenario, len(agenten), rng)
-        engine = VollmondEngine(agenten, karten, rng=rng, beobachter=beobachter)
-        return engine, {s.name: s.startrolle.value for s in engine.spieler.values()}
-    klassisch = Engine(agenten, rng=rng, beobachter=beobachter)
-    return klassisch, {s.name: s.rolle.value for s in klassisch.spieler.values()}
-
-
-def ergebnis_zusammenfassen(ergebnis: Ergebnis | VollmondErgebnis) -> tuple[str, list[str], dict[str, Any]]:
-    """Kurzfassung, Zeilen fürs Protokoll und Daten fürs Log."""
-    if isinstance(ergebnis, VollmondErgebnis):
-        gewinner = " und ".join(sorted(p.value for p in ergebnis.gewinner)) or "Niemand"
-        tote = f"tot: {', '.join(ergebnis.tote)}" if ergebnis.tote else "niemand stirbt"
-        kurz = f"{gewinner} gewinnt ({tote})"
-        zeilen = [f"{kurz}.", f"Sieger: {', '.join(ergebnis.sieger) or 'niemand'}"]
-        daten = {
-            "gewinner": sorted(p.value for p in ergebnis.gewinner),
-            "sieger": ergebnis.sieger,
-            "tote": ergebnis.tote,
-            "endrollen": {n: r.value for n, r in ergebnis.endrollen.items()},
-        }
-        return kurz, zeilen, daten
-    kurz = f"{ergebnis.gewinner.value} gewinnen nach {ergebnis.runden} Runden"
-    zeilen = [f"{kurz}.", f"Überlebende: {', '.join(ergebnis.ueberlebende)}"]
-    daten = {"gewinner": ergebnis.gewinner.value, "runden": ergebnis.runden, "ueberlebende": ergebnis.ueberlebende}
-    return kurz, zeilen, daten
 
 
 def partie_spielen(
@@ -102,31 +69,8 @@ def partie_spielen(
     if regeln == VOLLMONDNACHT and szenario is None:
         szenario = szenario_namen(anzahl_spieler)[0]
 
-    # Jeder LLM-Spieler bekommt eine andere, zufällige Persönlichkeit.
-    # Die Rollen werden zufällig verteilt, daher ist egal, welche Namen das LLM bekommt.
-    persoenlichkeiten = rng.sample(persoenlichkeiten_laden(), anzahl_llm)
-    llm_klasse = VollmondLLMSpieler if regeln == VOLLMONDNACHT else LLMSpieler
-    agenten: dict[str, Agent] = {}
-    persoenlichkeit_von: dict[str, str | None] = {}
-    typ_von: dict[str, str] = {}
-    llm_vergeben = 0
-    for name in namen:
-        if name == mensch:
-            agenten[name] = mensch_spieler or MenschSpieler()
-            persoenlichkeit_von[name] = None
-            typ_von[name] = "mensch"
-        elif client and llm_vergeben < anzahl_llm:
-            # Eigener Zufall pro Spieler aus Seed und Name: verbraucht nichts vom
-            # Zufall der Partie, gleiche Seeds verteilen also gleiche Karten.
-            persoenlichkeit = persoenlichkeiten[llm_vergeben]
-            agenten[name] = llm_klasse(client, persoenlichkeit, rng=random.Random(f"{seed}-{name}"))
-            persoenlichkeit_von[name] = persoenlichkeit
-            typ_von[name] = "llm"
-            llm_vergeben += 1
-        else:
-            agenten[name] = MockAgent(random.Random(rng.random()))
-            persoenlichkeit_von[name] = None
-            typ_von[name] = "mock"
+    besetzung = agenten_bauen(seed, rng, namen, anzahl_llm, client, regeln, mensch, mensch_spieler)
+    agenten, persoenlichkeit_von, typ_von = besetzung.agenten, besetzung.persoenlichkeit_von, besetzung.typ_von
 
     # Spielst du selbst mit, darf die Konsole nichts Geheimes zeigen.
     protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch and konsole else None)
