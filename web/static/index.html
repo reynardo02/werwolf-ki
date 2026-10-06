@@ -117,7 +117,7 @@
         </div>
         <div>
           <label for="tempo">Anfragen pro Minute</label>
-          <input id="tempo" type="number" min="0" value="15">
+          <input id="tempo" type="number" min="0" value="100">
         </div>
       </div>
       <label for="key">API-Key</label>
@@ -176,6 +176,8 @@ function zugangLesen() {
 function zugangLaden() {
   try {
     const z = JSON.parse(localStorage.getItem("werwolf-zugang") || "{}");
+    // „15“ war der alte Standard fürs Tempolimit – gemerkt heißt das nicht „gewollt“.
+    if (z.tempo === "15") delete z.tempo;
     for (const id of ZUGANG) if (z[id]) $(id).value = z[id];
     if (z.key) { $("key").value = z.key; $("merken").checked = true; }
   } catch { /* nichts gespeichert */ }

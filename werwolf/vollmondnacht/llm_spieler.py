@@ -22,7 +22,10 @@ from werwolf.vollmondnacht.rollen import Partei, Rolle, faehigkeiten_text
 
 # Wer lügen darf, hängt von der Partei ab: Werwölfe und Gerber profitieren vom Lügen,
 # das Dorf von Ehrlichkeit – nur so lassen sich die nächtlichen Kartentausche aufklären.
-LUEGEN = " Du darfst lügen und jede Rolle behaupten."
+LUEGEN = (
+    " Du darfst lügen und jede Rolle behaupten. Behauptest du eine Rolle, erfinde auch passende "
+    "Einzelheiten (wessen Karte, welche Karten), so wie sie diese Rolle wirklich wüsste."
+)
 EHRLICH = (
     " Das Dorf gewinnt durch Ehrlichkeit: Sag offen, welche Karte du zu Beginn hattest und "
     "was du nachts getan und gesehen hast. Wurde deine Karte vertauscht, weißt du es eventuell nicht."
@@ -95,6 +98,16 @@ AUFGABEN = {
     ),
 }
 
+# Manche Spieler (vor allem Werwölfe) redeten herum, ohne je eine Karte zu nennen.
+# Am Tisch fragt man das als Erstes – daher Pflicht in der ersten Wortmeldung.
+# Danach behaupteten Werwölfe oft „Seherin, zwei Mittelkarten angesehen“, ohne die Karten
+# zu nennen. Eine echte Seherin würde sie nennen – daher „konkret“.
+ERSTE_REDE = (
+    "\n\nDas ist deine erste Wortmeldung: Sag als Erstes, welche Karte du zu Beginn hattest "
+    "und was du nachts getan oder gesehen hast – konkret: wessen Karte bzw. welche Mittelkarten "
+    "und welche Rollen darauf standen."
+)
+
 BESCHREIBUNGEN = {
     NACHAHMEN: "Sieh dir die Karte eines Mitspielers an und übernimm seine Rolle und Partei.",
     SPIELER_ANSEHEN: "Sieh dir heimlich die Karte eines Mitspielers an.",
@@ -110,6 +123,10 @@ _TEXT = {
     SPRECHEN: {"text": {"type": "string", "description": "Was du sagst, 1–3 Sätze."}},
 }
 _BEGRUENDUNG = {"type": "string", "description": "Deine ehrliche, private Begründung. Niemand sieht sie."}
+
+
+def _schon_gesprochen(zug: Zug) -> bool:
+    return any(e.art == "rede" and e.daten.get("spieler") == zug.ich for e in zug.ereignisse)
 
 
 def rollen_im_spiel(zug: Zug) -> set[Rolle]:
@@ -141,6 +158,8 @@ class VollmondLLMSpieler(LLMSpieler):
 
     def zug_prompt(self, zug: Zug) -> str:
         aufgabe = AUFGABEN[zug.erlaubte_tools[0]]
+        if zug.erlaubte_tools[0] == SPRECHEN and not _schon_gesprochen(zug):
+            aufgabe += ERSTE_REDE
         if zug.hinweis:
             aufgabe += f"\n\nDein letzter Versuch war ungültig: {zug.hinweis} Versuch es noch einmal."
         return self._zug_vorlage.format(

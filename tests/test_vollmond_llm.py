@@ -113,3 +113,19 @@ def test_system_prompt_erklaert_alle_rollen_der_partie() -> None:
     assert "- Jäger:" not in system and "- Doppelgängerin:" not in system  # nicht in dieser Partie
     # In der Reihenfolge der Nacht
     assert system.index("- Werwolf:") < system.index("- Seherin:") < system.index("- Schlaflose:")
+
+
+def test_erste_wortmeldung_verlangt_die_startkarte() -> None:
+    from werwolf.vollmondnacht.llm_spieler import ERSTE_REDE
+
+    client = FakeClient()
+    verteilung = {"Anna": Rolle.WERWOLF, "Ben": Rolle.DORFBEWOHNER, "Clara": Rolle.SCHLAFLOSE}
+    mitte = [Rolle.SEHERIN, Rolle.RAEUBER, Rolle.DORFBEWOHNER]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                   verteilung=verteilung, mitte=mitte).spielen()
+    reden = [nachricht for _, nachricht, tools in client.anfragen_liste if tools[0].name == "sprechen"]
+    # 3 Spieler × 2 Diskussionsrunden: nur die ersten drei Reden verlangen die Startkarte.
+    assert [ERSTE_REDE.strip() in r for r in reden] == [True, True, True, False, False, False]
+    # Vage Behauptungen („zwei Mittelkarten angesehen“) reichen nicht: Die Karten müssen genannt werden.
+    assert "welche Mittelkarten" in ERSTE_REDE
