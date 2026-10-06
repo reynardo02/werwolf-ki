@@ -139,3 +139,21 @@ def test_erste_wortmeldung_verlangt_die_startkarte() -> None:
     assert [ERSTE_REDE.strip() in r for r in reden] == [True, True, True, False, False, False]
     # Vage Behauptungen („zwei Mittelkarten angesehen“) reichen nicht: Die Karten müssen genannt werden.
     assert "welche Mittelkarten" in ERSTE_REDE
+
+
+def test_tauscher_sprechen_die_folge_ihres_tauschs_aus() -> None:
+    from werwolf.vollmondnacht.llm_spieler import TAUSCH_FOLGE
+
+    client = FakeClient()
+    verteilung = {"Anna": Rolle.UNRUHESTIFTERIN, "Ben": Rolle.RAEUBER, "Clara": Rolle.WERWOLF}
+    mitte = [Rolle.SEHERIN, Rolle.DORFBEWOHNER, Rolle.SCHLAFLOSE]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                   verteilung=verteilung, mitte=mitte).spielen()
+    # Nur die erste Rede der beiden Tauscher, nicht die des Werwolfs und nicht später.
+    mit_folge = [
+        name for system, nachricht, tools in client.anfragen_liste
+        if tools[0].name == "sprechen" and TAUSCH_FOLGE.strip() in nachricht
+        for name in verteilung if f"Du bist {name}" in system
+    ]
+    assert mit_folge == ["Anna", "Ben"]

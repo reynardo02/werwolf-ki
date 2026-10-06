@@ -114,6 +114,17 @@ ERSTE_REDE = (
     "und welche Rollen darauf standen."
 )
 
+# Eigene Partien: Die Unruhestifterin sagte offen „Anna und Emil vertauscht“, trotzdem stimmte
+# das Dorf (sogar sie selbst) gegen den Start-Werwolf, dessen Karte schon beim anderen lag.
+# Wer getauscht hat, spricht die Folge deshalb gleich selbst aus – eine Spielhandlung,
+# kein Logik-Hinweis ans Dorf (solche Hinweise schadeten in Serie 2).
+TAUSCH_FOLGE = (
+    " Hast du nachts Karten getauscht, sag ausdrücklich, was das bedeutet: wer jetzt welche Karte "
+    "hat (z. B. „Ben hat jetzt die Karte, die Clara zu Beginn hatte, und umgekehrt“). Hatte einer "
+    "von beiden zu Beginn eine Werwolf-Karte, liegt sie jetzt beim anderen."
+)
+TAUSCHER = {Rolle.UNRUHESTIFTERIN, Rolle.RAEUBER}
+
 BESCHREIBUNGEN = {
     NACHAHMEN: "Sieh dir die Karte eines Mitspielers an und übernimm seine Rolle und Partei.",
     SPIELER_ANSEHEN: "Sieh dir heimlich die Karte eines Mitspielers an.",
@@ -179,6 +190,8 @@ class VollmondLLMSpieler(LLMSpieler):
         aufgabe = AUFGABEN[zug.erlaubte_tools[0]]
         if zug.erlaubte_tools[0] == SPRECHEN and not _schon_gesprochen(zug):
             aufgabe += ERSTE_REDE
+            if zug.rolle in TAUSCHER:
+                aufgabe += TAUSCH_FOLGE
         if zug.hinweis:
             aufgabe += f"\n\nDein letzter Versuch war ungültig: {zug.hinweis} Versuch es noch einmal."
         return self._zug_vorlage.format(

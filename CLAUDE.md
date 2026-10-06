@@ -105,4 +105,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Persönlichkeit „lenkt gern vom Thema ab“ ersetzt durch „teilt ausführlich die eigenen Gedanken“: In eigenen
   Partien redete sie 3× über Wetter und Kaffee statt über die Partie. Gleiche Anzahl Persönlichkeiten,
   also bleibt die Verteilung bei gleichem Seed gleich.
+- Tauscher sprechen die Folge aus (TAUSCH_FOLGE in vollmondnacht/llm_spieler.py): Unruhestifterin und
+  Räuber sagen in der ersten Rede, wer jetzt welche Karte hat. Grund: Das Dorf (sogar die Tauscherin)
+  stimmte gegen den Start-Werwolf, obwohl der Tausch offen genannt war. Wirkung noch nicht gemessen.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
