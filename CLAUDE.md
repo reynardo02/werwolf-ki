@@ -141,8 +141,12 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Logs noch nicht im Detail ausgewertet.
 - Serie 10, gpt-5.4 (groß), LLM_TEMPERATUR=1, aber andere Seeds (ab 263615, nicht 443803) – daher nur grob
   vergleichbar: 38,1 % (Zufall 21,5 %), Start-Werwölfe 48,7 %, Dorf gewinnt 7/20 (Serie 9: 14/20, p ≈ 0,06).
-  Logs 16–20: Spiel deutlich hochwertiger. Werwölfe wählen unprüfbare Behauptungen (Unruhestifterin tauscht
-  zwei Dorfbewohner), opfern den Partner, ein Räuber mit Werwolf-Karte verschweigt den Raub (NEUE_PARTEI
-  wirkt). Das Dorf baut saubere Kartenketten (Partie 19). Niederlagen jetzt in echten 50:50-Lagen
-  (zwei Schlaflose, zwei Seherinnen) oder bei verdecktem Raub – keine groben Regelfehler mehr.
+  Spielqualität deutlich höher: Werwölfe behaupten meist „Schlaflose“ (13/26) oder Unprüfbares, decken sich
+  gegenseitig (Partie 13: Wolf-Unruhestifterin „erklärt“ die doppelte Schlaflose des Partners), opfern den
+  Partner (16), ein nachts zum Werwolf gewordener Spieler sagt die Wahrheit und lenkt damit auf den alten
+  Wolf (8). Das Dorf baut saubere Kartenketten (14, 19). 13 Niederlagen: ~4× geschickte Wolf-Täuschung oder
+  echtes 50:50 (zwei Schlaflose/Seherinnen), 3× Kartenweg übersehen, 3× ehrlicher Info-Spieler trotz
+  lösbarer Lage, 2× kaum lösbar (Werwolf nur über den Betrunkenen am Tisch; Partie 5 ohne Werwolf am Tisch,
+  das Dorf hätte niemanden töten dürfen). Die Siegquote misst ab hier nicht mehr nur das Dorf – die Wölfe
+  werden mit dem Modell genauso besser.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
