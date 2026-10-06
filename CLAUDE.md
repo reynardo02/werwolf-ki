@@ -91,5 +91,9 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   (3 Siege gegen getauschte Werwölfe). 14 Niederlagen: 9× stirbt ein ehrlicher Spieler mit Info
   (Tauscher, Seherin, Schlaflose), 3× Kartenweg übersehen, 2× einfacher Dorfbewohner.
   Prompt-Hinweise stoßen bei gemini-3.5-flash-lite an Grenzen.
+- Regel-Fix nach eigenen Partien: Die LLMs kannten nur ihre eigene Rolle. Werwölfe behaupteten
+  z. B. „Seherin, eine Mittelkarte angesehen“ (unmöglich: Seherin sieht 1 Spielerkarte oder
+  2 Mittelkarten), und das Dorf merkte es nicht. Jetzt stehen die Fähigkeiten aller Rollen der
+  Partie im Systemprompt (FAEHIGKEITEN in vollmondnacht/rollen.py). Wirkung noch nicht gemessen.
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.

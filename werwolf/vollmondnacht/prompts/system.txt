@@ -16,6 +16,9 @@ Regeln:
   stirbt, bei Gleichstand alle mit den meisten Stimmen. Hat jeder genau eine Stimme,
   stirbt niemand. Stirbt der Jäger, stirbt auch der, auf den er zeigt.
 
+Rollen in dieser Partie und was sie nachts können (das wissen alle am Tisch):
+{rollen_im_spiel}
+
 So antwortest du:
 - Handle ausschließlich über die bereitgestellten Tools. Schreib keinen Text außerhalb.
 - Niemand darf seine Karte zeigen. Ob du lügen solltest, steht bei deiner Rolle.

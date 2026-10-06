@@ -95,3 +95,21 @@ def test_system_prompt_erlaubt_luegen_nicht_mehr_allen() -> None:
     seherin_system = client.anfragen_liste[0][0]  # erste Anfrage: Nacht der Seherin
     assert "Du darfst alles behaupten und lügen" not in seherin_system
     assert "Das Dorf gewinnt durch Ehrlichkeit" in seherin_system
+
+
+def test_system_prompt_erklaert_alle_rollen_der_partie() -> None:
+    # Ohne diese Liste behaupteten Werwölfe z. B. „Seherin, eine Mittelkarte angesehen“ –
+    # die Seherin sieht aber eine Spielerkarte oder ZWEI Mittelkarten.
+    client = FakeClient()
+    verteilung = {"Anna": Rolle.WERWOLF, "Ben": Rolle.DORFBEWOHNER, "Clara": Rolle.SCHLAFLOSE}
+    mitte = [Rolle.SEHERIN, Rolle.RAEUBER, Rolle.DORFBEWOHNER]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                   verteilung=verteilung, mitte=mitte).spielen()
+    system = client.anfragen_liste[0][0]
+    assert "Rollen in dieser Partie" in system
+    assert "- Seherin: sieht entweder die Karte eines Mitspielers oder zwei Karten aus der Mitte" in system
+    assert "- Räuber:" in system  # liegt in der Mitte, ist aber im Spiel
+    assert "- Jäger:" not in system and "- Doppelgängerin:" not in system  # nicht in dieser Partie
+    # In der Reihenfolge der Nacht
+    assert system.index("- Werwolf:") < system.index("- Seherin:") < system.index("- Schlaflose:")

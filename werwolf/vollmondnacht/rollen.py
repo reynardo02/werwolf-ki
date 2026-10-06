@@ -49,6 +49,36 @@ NACHT_REIHENFOLGE = [
     Rolle.SCHLAFLOSE,
 ]
 
+# Was jede Rolle kann – so, wie es alle Spieler aus der Anleitung kennen.
+# Wer eine Rolle behauptet, muss dazu passende Erlebnisse erzählen.
+FAEHIGKEITEN = {
+    Rolle.DOPPELGAENGERIN: (
+        "wacht als Erste auf, sieht die Karte eines Mitspielers an und wird zu dieser Rolle "
+        "(als Seherin, Räuber, Unruhestifterin, Betrunkener oder Günstling handelt sie sofort)"
+    ),
+    Rolle.WERWOLF: (
+        "die Werwölfe sehen sich gegenseitig; ist nur einer unter den Spielern, "
+        "darf er sich eine Karte aus der Mitte ansehen"
+    ),
+    Rolle.GUENSTLING: "sieht, wer die Werwölfe sind; die Werwölfe kennen ihn nicht",
+    Rolle.FREIMAURER: "die Freimaurer sehen sich gegenseitig",
+    Rolle.SEHERIN: "sieht entweder die Karte eines Mitspielers oder zwei Karten aus der Mitte",
+    Rolle.RAEUBER: "darf seine Karte mit der eines Mitspielers tauschen und sieht dann seine neue Karte",
+    Rolle.UNRUHESTIFTERIN: "darf die Karten von zwei anderen Spielern vertauschen, ohne sie anzusehen",
+    Rolle.BETRUNKENER: "muss seine Karte mit einer aus der Mitte tauschen, ohne sie anzusehen",
+    Rolle.SCHLAFLOSE: "sieht am Ende der Nacht ihre eigene Karte an",
+    Rolle.JAEGER: "keine Nachtaktion; stirbt er, stirbt auch der Spieler, auf den er zeigt",
+    Rolle.GERBER: "keine Nachtaktion; gewinnt nur, wenn er selbst stirbt",
+    Rolle.DORFBEWOHNER: "keine Nachtaktion",
+}
+
+
+def faehigkeiten_text(rollen: set[Rolle]) -> str:
+    """Die Rollen einer Partie mit ihren Fähigkeiten, in der Reihenfolge der Nacht."""
+    reihenfolge = NACHT_REIHENFOLGE + [r for r in Rolle if r not in NACHT_REIHENFOLGE]
+    return "\n".join(f"- {r.value}: {FAEHIGKEITEN[r]}" for r in reihenfolge if r in rollen)
+
+
 # Alle 16 Karten der Schachtel.
 SCHACHTEL = (
     [Rolle.DORFBEWOHNER] * 3 + [Rolle.WERWOLF] * 2 + [Rolle.FREIMAURER] * 2
