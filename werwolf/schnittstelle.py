@@ -71,6 +71,9 @@ class Zug:
     # Für Tools mit mehreren Parametern: Tool -> Parameter -> erlaubte Werte,
     # z. B. {"vertauschen": {"ziel1": ["Ben", "Clara"], "ziel2": ["Ben", "Clara"]}}.
     optionen: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+    # Vollmondnacht: die Karte, die du nachts zuletzt selbst vor dir gesehen hast (Räuber,
+    # Schlaflose). None, wenn du deine aktuelle Karte nicht kennst.
+    bekannte_karte: Enum | None = None
 
 
 class Agent(Protocol):

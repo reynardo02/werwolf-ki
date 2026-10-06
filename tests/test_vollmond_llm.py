@@ -85,6 +85,16 @@ def test_nur_werwoelfe_und_gerber_duerfen_luegen() -> None:
     assert "darfst lügen" in rollen_hinweis(Rolle.RAEUBER)
 
 
+def test_wer_nachts_werwolf_wird_wechselt_die_seite() -> None:
+    from werwolf.vollmondnacht.llm_spieler import EHRLICH, LUEGEN, rollen_hinweis
+
+    # Schlaflose sieht morgens eine Werwolf-Karte: jetzt Rudel, also kein Ehrlichkeits-Hinweis.
+    hinweis = rollen_hinweis(Rolle.SCHLAFLOSE, Rolle.WERWOLF)
+    assert "Werwolfsrudel" in hinweis and LUEGEN in hinweis and EHRLICH not in hinweis
+    # Räuber raubt eine Dorfkarte: bleibt Dorf, bleibt ehrlich.
+    assert rollen_hinweis(Rolle.RAEUBER, Rolle.SEHERIN) == rollen_hinweis(Rolle.RAEUBER)
+
+
 def test_system_prompt_erlaubt_luegen_nicht_mehr_allen() -> None:
     client = FakeClient()
     verteilung = {"Anna": Rolle.SEHERIN, "Ben": Rolle.WERWOLF, "Clara": Rolle.DORFBEWOHNER}

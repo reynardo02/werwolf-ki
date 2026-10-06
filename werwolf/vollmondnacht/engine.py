@@ -36,6 +36,7 @@ class Spieler:
     agent: Agent
     startrolle: Rolle
     wissen: list[str] = field(default_factory=list)
+    bekannte_karte: Rolle | None = None  # zuletzt selbst gesehene eigene Karte
 
 
 @dataclass
@@ -220,6 +221,7 @@ class VollmondEngine:
         ziel = aktion.parameter["ziel"]
         self._tauschen(raeuber.name, ziel)
         neu = self.karten[raeuber.name]
+        raeuber.bekannte_karte = neu
         raeuber.wissen.append(
             f"Du hast deine Karte mit {ziel} getauscht. Deine neue Karte: {neu.value}. "
             f"{ziel} hat jetzt deine alte Karte."
@@ -249,6 +251,7 @@ class VollmondEngine:
 
     def _schlaflose(self, schlaflose: Spieler) -> None:
         karte = self.karten[schlaflose.name]
+        schlaflose.bekannte_karte = karte
         schlaflose.wissen.append(f"Am Ende der Nacht liegt diese Karte vor dir: {karte.value}.")
         self._nachtaktion(schlaflose, "eigene_karte_ansehen", ergebnis=karte.value)
 
@@ -352,6 +355,7 @@ class VollmondEngine:
                 hinweis=hinweis,
                 # Freitext-Tools haben keine festen Werte, alle anderen schon.
                 optionen={t: p for t, p in optionen.items() if t != SPRECHEN},
+                bekannte_karte=spieler.bekannte_karte,
             )
             aktion = spieler.agent.handeln(zug)
             hinweis = self._pruefen(aktion, optionen)
