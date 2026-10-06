@@ -18,7 +18,7 @@ from werwolf.vollmondnacht.engine import (
     SPIELER_ANSEHEN,
     VERTAUSCHEN,
 )
-from werwolf.vollmondnacht.rollen import Partei, Rolle
+from werwolf.vollmondnacht.rollen import Partei, Rolle, faehigkeiten_text
 
 # Wer lügen darf, hängt von der Partei ab: Werwölfe und Gerber profitieren vom Lügen,
 # das Dorf von Ehrlichkeit – nur so lassen sich die nächtlichen Kartentausche aufklären.
@@ -112,6 +112,14 @@ _TEXT = {
 _BEGRUENDUNG = {"type": "string", "description": "Deine ehrliche, private Begründung. Niemand sieht sie."}
 
 
+def rollen_im_spiel(zug: Zug) -> set[Rolle]:
+    """Welche Rollen diese Partie hat – steht in der öffentlichen Ansage zu Spielbeginn."""
+    for e in zug.ereignisse:
+        if e.art == "karten":
+            return {Rolle(name) for name in e.daten["karten"].split(", ")}
+    return set(Rolle)  # ohne Ansage (z. B. in Tests): alle Rollen erklären
+
+
 def rollen_hinweis(rolle: Rolle) -> str:
     """Strategie-Hinweis plus, je nach Partei der Startkarte, Lügen oder Ehrlichkeit."""
     if rolle is Rolle.DOPPELGAENGERIN:
@@ -128,6 +136,7 @@ class VollmondLLMSpieler(LLMSpieler):
             rolle=zug.rolle.value,
             rollen_hinweis=rollen_hinweis(zug.rolle),
             persoenlichkeit=self.persoenlichkeit,
+            rollen_im_spiel=faehigkeiten_text(rollen_im_spiel(zug)),
         )
 
     def zug_prompt(self, zug: Zug) -> str:
