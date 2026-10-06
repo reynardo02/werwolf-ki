@@ -208,4 +208,26 @@ def test_werwolf_soll_die_gesehene_mittelkarte_behaupten() -> None:
     # Eigene Partie 522974: Der Wolf sah die Seherin in der Mitte und behauptete trotzdem Schlaflose.
     hinweis = ROLLEN_HINWEISE[Rolle.WERWOLF]
     assert "Mittelkarte angesehen" in hinweis
-    assert "auch die Seherin" in hinweis
+    # Serie 11, Partie 3: Mit Beispiel statt „auch die Seherin“, das auf die Seherin lenkte.
+    assert "Betrunkener gesehen → behaupte Betrunkener" in hinweis
+
+
+def test_eigene_reden_und_stimmen_sind_als_du_markiert() -> None:
+    # Serie 11: Ben sagte „ich vote Ben“, Anna redete von sich in der dritten Person.
+    from werwolf.schnittstelle import Ereignis
+
+    ereignisse = [
+        Ereignis(1, Phase.DISKUSSION, 'Ben: "Ich war Räuber."', art="rede", daten={"spieler": "Ben"}),
+        Ereignis(1, Phase.DISKUSSION, 'Anna: "Ben lügt."', art="rede", daten={"spieler": "Anna"}),
+        Ereignis(1, Phase.DISKUSSION, "Ben zeigt auf Anna.", art="stimme",
+                 daten={"von": "Ben", "ziel": "Anna"}),
+        Ereignis(1, Phase.DISKUSSION, "Anna zeigt auf Ben.", art="stimme",
+                 daten={"von": "Anna", "ziel": "Ben"}),
+    ]
+    zug = Zug(ich="Ben", rolle=Rolle.RAEUBER, runde=1, phase=Phase.DISKUSSION,
+              erlaubte_tools=[SPRECHEN], lebende=["Anna", "Ben"], geheimwissen=[], notizen=[],
+              ereignisse=ereignisse)
+    nachricht = VollmondLLMSpieler(FakeClient(), "ruhig").zug_prompt(zug)
+    assert 'Ben (du): "Ich war Räuber."' in nachricht
+    assert "Ben (du) zeigt auf Anna." in nachricht
+    assert 'Anna: "Ben lügt."' in nachricht and "Anna zeigt auf Ben." in nachricht
