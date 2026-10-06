@@ -150,4 +150,8 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   lösbarer Lage, 2× kaum lösbar (Werwolf nur über den Betrunkenen am Tisch; Partie 5 ohne Werwolf am Tisch,
   das Dorf hätte niemanden töten dürfen). Die Siegquote misst ab hier nicht mehr nur das Dorf – die Wölfe
   werden mit dem Modell genauso besser.
+- Regel-Fix nach eigener Browser-Partie (gpt-5.4, Partie 667996): Das Dorf meinte, wer die Schlaflose-Karte
+  erst nachts bekommt, hätte am Ende etwas sehen müssen, hielt deshalb die ehrliche Unruhestifterin für eine
+  Lügnerin und tötete die echte Seherin. Jetzt steht in den Regeln für alle: Nachts handelt jeder nur mit
+  seiner Startkarte (vollmondnacht/prompts/system.txt). Bisher stand das nur im Dorf-Hinweis KARTENWEG.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.

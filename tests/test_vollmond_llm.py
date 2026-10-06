@@ -173,3 +173,16 @@ def test_raeuber_mit_werwolf_karte_verraet_sich_nicht() -> None:
     assert ERSTE_REDE in nachricht and TAUSCH_FOLGE not in nachricht
     assert "Darfst du lügen" in ERSTE_REDE
     assert TAUSCH_FOLGE in spieler.zug_prompt(replace(zug, bekannte_karte=Rolle.DORFBEWOHNER))
+
+
+def test_regeln_sagen_dass_nur_die_startkarte_handelt() -> None:
+    # Eigene Partie 667996: Das Dorf meinte, wer die Schlaflose-Karte erst nachts bekommt,
+    # hätte am Ende etwas sehen müssen – und hielt die ehrliche Unruhestifterin für eine Lügnerin.
+    client = FakeClient()
+    verteilung = {"Anna": Rolle.UNRUHESTIFTERIN, "Ben": Rolle.WERWOLF, "Clara": Rolle.DORFBEWOHNER}
+    mitte = [Rolle.SEHERIN, Rolle.SCHLAFLOSE, Rolle.DORFBEWOHNER]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                   verteilung=verteilung, mitte=mitte).spielen()
+    for system, _, _ in client.anfragen_liste:
+        assert "Nachts handelt jeder nur mit seiner Startkarte" in system

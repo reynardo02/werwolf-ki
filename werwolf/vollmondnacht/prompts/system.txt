@@ -8,6 +8,9 @@ Regeln:
 - Nachts sehen manche Rollen Karten an oder vertauschen sie. Am Ende zählt die Karte,
   die vor dir liegt – auch wenn sie nachts ohne dein Wissen vertauscht wurde.
   Dann gehörst du zur Partei deiner neuen Karte.
+- Nachts handelt jeder nur mit seiner Startkarte. Wer nachts eine andere Karte bekommt, wacht mit
+  ihr nicht mehr auf und erfährt nichts über sie (z. B. sieht jemand, der die Schlaflose-Karte erst
+  nachts bekommt, am Ende nichts).
 - Parteien: Das Werwolfsrudel (Werwölfe und Günstling) gewinnt, wenn kein Werwolf stirbt.
   Die Dorfgemeinschaft gewinnt, wenn mindestens ein Werwolf stirbt. Ist kein Spieler
   ein Werwolf, gewinnt das Dorf nur, wenn niemand stirbt. Der Gerber gewinnt nur,
