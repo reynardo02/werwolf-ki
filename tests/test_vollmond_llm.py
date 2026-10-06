@@ -186,3 +186,19 @@ def test_regeln_sagen_dass_nur_die_startkarte_handelt() -> None:
                    verteilung=verteilung, mitte=mitte).spielen()
     for system, _, _ in client.anfragen_liste:
         assert "Nachts handelt jeder nur mit seiner Startkarte" in system
+
+
+def test_regeln_erklaeren_die_nachtreihenfolge() -> None:
+    # Eigene Partie 583495: Das Dorf meinte, die Seherin hätte bei Ben schon die Räuber-Karte
+    # sehen müssen – dabei ist die Seherin vor dem Räuber dran.
+    client = FakeClient()
+    verteilung = {"Anna": Rolle.RAEUBER, "Ben": Rolle.WERWOLF, "Clara": Rolle.SEHERIN}
+    mitte = [Rolle.DORFBEWOHNER, Rolle.SCHLAFLOSE, Rolle.DORFBEWOHNER]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                   verteilung=verteilung, mitte=mitte).spielen()
+    for system, _, _ in client.anfragen_liste:
+        assert "in der Reihenfolge, in der sie nachts\naufwachen" in system
+        assert "sieht sie so, wie sie in diesem Moment ist" in system
+        # Die Rollenliste steht wirklich in Nachtreihenfolge.
+        assert system.index("- Werwolf:") < system.index("- Seherin:") < system.index("- Räuber:")
