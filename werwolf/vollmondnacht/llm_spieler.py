@@ -133,6 +133,12 @@ ERSTE_REDE = (
 # das Dorf (sogar sie selbst) gegen den Start-Werwolf, dessen Karte schon beim anderen lag.
 # Wer getauscht hat, spricht die Folge deshalb gleich selbst aus – eine Spielhandlung,
 # kein Logik-Hinweis ans Dorf (solche Hinweise schadeten in Serie 2).
+# Serie 12/13: Wer nachts zum Werwolf wurde (Schlaflose sieht Werwolf, Räuber raubt einen),
+# sagte in 4 von 6 Fällen trotzdem „jetzt bin ich Werwolf“ – die erste Rede verlangt ja Konkretes.
+NICHT_VERRATEN = (
+    " Achtung: Vor dir liegt jetzt die Karte {karte}. Verrate das auf keinen Fall – "
+    "erzähl eine erfundene Geschichte, in der du nicht {karte} bist."
+)
 TAUSCH_FOLGE = (
     " Hast du nachts Karten getauscht, sag ausdrücklich, was das bedeutet: wer jetzt welche Karte "
     "hat (z. B. „Ben hat jetzt die Karte, die Clara zu Beginn hatte, und umgekehrt“). Hatte einer "
@@ -191,6 +197,11 @@ def _aktuelle_partei(zug: Zug) -> Partei:
     return karte.partei
 
 
+def _partei_gewechselt(zug: Zug) -> bool:
+    """Weiß der Spieler, dass er nachts vom Dorf auf eine andere Partei gewechselt ist?"""
+    return zug.rolle.partei is Partei.DORF and _aktuelle_partei(zug) is not Partei.DORF
+
+
 def rollen_hinweis(rolle: Rolle, bekannte_karte: Rolle | None = None) -> str:
     """Strategie-Hinweis plus, je nach Partei, Lügen oder Ehrlichkeit.
 
@@ -227,6 +238,9 @@ class VollmondLLMSpieler(LLMSpieler):
             # würde sich sonst selbst verraten (Serie 6, Partien 7 und 8).
             if zug.rolle in TAUSCHER and _aktuelle_partei(zug) is Partei.DORF:
                 aufgabe += TAUSCH_FOLGE
+        if zug.erlaubte_tools[0] == SPRECHEN and _partei_gewechselt(zug):
+            assert isinstance(zug.bekannte_karte, Rolle)
+            aufgabe += NICHT_VERRATEN.format(karte=zug.bekannte_karte.value)
         if zug.hinweis:
             aufgabe += f"\n\nDein letzter Versuch war ungültig: {zug.hinweis} Versuch es noch einmal."
         return self._zug_vorlage.format(
