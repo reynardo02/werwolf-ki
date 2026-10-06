@@ -1,9 +1,11 @@
 """Vollmondnacht mit LLM-Spielern – mit Fake-Client, kostenlos und ohne Internet."""
 
 import random
+from dataclasses import replace
 
 from core.llm_client import Antwort
 from core.tools import ToolCall, ToolSchema
+from werwolf.schnittstelle import SPRECHEN, Phase, Zug
 from werwolf.vollmondnacht.engine import NACHAHMEN, NICHTS_TUN, VERTAUSCHEN, VollmondEngine
 from werwolf.vollmondnacht.llm_spieler import ROLLEN_HINWEISE, VollmondLLMSpieler
 from werwolf.vollmondnacht.rollen import Rolle, szenario_karten
@@ -145,15 +147,29 @@ def test_tauscher_sprechen_die_folge_ihres_tauschs_aus() -> None:
     from werwolf.vollmondnacht.llm_spieler import TAUSCH_FOLGE
 
     client = FakeClient()
-    verteilung = {"Anna": Rolle.UNRUHESTIFTERIN, "Ben": Rolle.RAEUBER, "Clara": Rolle.WERWOLF}
-    mitte = [Rolle.SEHERIN, Rolle.DORFBEWOHNER, Rolle.SCHLAFLOSE]
+    # Der Werwolf liegt in der Mitte, damit der Räuber sicher Dorf bleibt.
+    verteilung = {"Anna": Rolle.UNRUHESTIFTERIN, "Ben": Rolle.RAEUBER, "Clara": Rolle.DORFBEWOHNER}
+    mitte = [Rolle.SEHERIN, Rolle.WERWOLF, Rolle.SCHLAFLOSE]
     agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
     VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
                    verteilung=verteilung, mitte=mitte).spielen()
-    # Nur die erste Rede der beiden Tauscher, nicht die des Werwolfs und nicht später.
+    # Nur die erste Rede der beiden Tauscher, nicht die des Dorfbewohners und nicht später.
     mit_folge = [
         name for system, nachricht, tools in client.anfragen_liste
         if tools[0].name == "sprechen" and TAUSCH_FOLGE.strip() in nachricht
         for name in verteilung if f"Du bist {name}" in system
     ]
     assert mit_folge == ["Anna", "Ben"]
+
+
+def test_raeuber_mit_werwolf_karte_verraet_sich_nicht() -> None:
+    from werwolf.vollmondnacht.llm_spieler import ERSTE_REDE, TAUSCH_FOLGE
+
+    spieler = VollmondLLMSpieler(FakeClient(), "ruhig")
+    zug = Zug(ich="Ben", rolle=Rolle.RAEUBER, runde=1, phase=Phase.DISKUSSION,
+              erlaubte_tools=[SPRECHEN], lebende=["Anna", "Ben"], geheimwissen=[], notizen=[],
+              ereignisse=[], bekannte_karte=Rolle.WERWOLF)
+    nachricht = spieler.zug_prompt(zug)
+    assert ERSTE_REDE in nachricht and TAUSCH_FOLGE not in nachricht
+    assert "Darfst du lügen" in ERSTE_REDE
+    assert TAUSCH_FOLGE in spieler.zug_prompt(replace(zug, bekannte_karte=Rolle.DORFBEWOHNER))

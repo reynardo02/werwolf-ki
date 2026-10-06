@@ -108,4 +108,16 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Tauscher sprechen die Folge aus (TAUSCH_FOLGE in vollmondnacht/llm_spieler.py): Unruhestifterin und
   Räuber sagen in der ersten Rede, wer jetzt welche Karte hat. Grund: Das Dorf (sogar die Tauscherin)
   stimmte gegen den Start-Werwolf, obwohl der Tausch offen genannt war. Wirkung noch nicht gemessen.
+- Serie 6, alle Fixes seit Serie 5 zusammen (Fähigkeiten, konkrete erste Rede, NEUE_PARTEI,
+  Persönlichkeit, TAUSCH_FOLGE), 20 Partien ab Seed 443803: 49,1 % (Zufall 25,9 %), Start-Werwölfe 43,5 %,
+  Dorf gewinnt 11/20. Gegen Kontrolle gesichert (Fisher p ≈ 0,02), gegen Serie 4/5 noch nicht (p ≈ 0,5/0,2).
+  Welcher Fix wie viel bringt, ist nicht trennbar. 9 Siege durch doppelte Rollenbehauptung (Seherin, Schlaflose).
+  9 Niederlagen: 5× Nachtreihenfolge (Räuber hält beraubte Unruhestifterin für Lügnerin oder versteht
+  nicht, dass er danach noch vertauscht wurde), 3× Kartenweg übersehen, 1× Herde.
+  Bug: ERSTE_REDE/TAUSCH_FOLGE zwangen Spieler, die nachts Werwolf wurden, zur Wahrheit (Partie 9: Schlaflose
+  sagt „ich bin jetzt Werwolf“). Serie 6 ist dadurch leicht geschönt.
+- Fix danach: ERSTE_REDE erlaubt Lügnern ihre erfundene Geschichte, TAUSCH_FOLGE nur noch für Spieler, die nach
+  ihrem Kartenwissen zum Dorf gehören. Der Räuber erfährt im Geheimwissen, wer nach ihm noch dran war und dass
+  der Beraubte trotzdem mit seiner Startkarte handelt (_danach_hinweis in vollmondnacht/engine.py).
+  Nächster Schritt: Serie 7 mit denselben Seeds.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.

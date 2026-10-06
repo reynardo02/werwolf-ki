@@ -255,3 +255,28 @@ def test_nachtreihenfolge_wird_allen_angesagt() -> None:
     # Nur Rollen mit Nachtaktion, die im Spiel sind – auch die aus der Mitte.
     assert ansage.daten["reihenfolge"] == "Werwolf, Seherin, Räuber, Unruhestifterin, Schlaflose"
     assert "Reihenfolge dran: Werwolf, Seherin" in ansage.text
+
+
+def test_raeuber_erfaehrt_was_nach_ihm_noch_passieren_kann() -> None:
+    # Wie Serie 6, Partie 1: Der Räuber raubt die Unruhestifterin, die danach noch tauscht.
+    verteilung = {"Anna": R.RAEUBER, "Ben": R.UNRUHESTIFTERIN, "Clara": R.WERWOLF, "Dario": R.DORFBEWOHNER}
+    agenten = alle_stimmen_fuer("Clara", list(verteilung), "Anna")
+    agenten["Anna"].nacht = Aktion(RAUBEN, {"ziel": "Ben"})
+    agenten["Ben"].nacht = Aktion(VERTAUSCHEN, {"ziel1": "Anna", "ziel2": "Clara"})
+    e = engine(verteilung, [R.SEHERIN, R.SCHLAFLOSE, R.DORFBEWOHNER], agenten)
+    e.spielen()
+
+    wissen = " ".join(e.spieler["Anna"].wissen)
+    assert "Nach dir waren noch dran: Unruhestifterin, Schlaflose." in wissen
+    assert "Ben ist trotzdem noch als Unruhestifterin aufgewacht" in wissen
+    # Und tatsächlich: Ben hat danach Anna vertauscht, Anna hat jetzt die Werwolf-Karte.
+    assert e.karten["Anna"] is R.WERWOLF
+
+
+def test_raeuber_ohne_spaetere_rollen_bekommt_keinen_zusatz() -> None:
+    verteilung = {"Anna": R.RAEUBER, "Ben": R.DORFBEWOHNER, "Clara": R.WERWOLF}
+    agenten = alle_stimmen_fuer("Clara", list(verteilung), "Anna")
+    agenten["Anna"].nacht = Aktion(RAUBEN, {"ziel": "Ben"})
+    e = engine(verteilung, [R.SEHERIN, R.DORFBEWOHNER, R.DORFBEWOHNER], agenten)
+    e.spielen()
+    assert not any("Nach dir" in w for w in e.spieler["Anna"].wissen)

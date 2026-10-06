@@ -87,6 +87,7 @@ class VollmondEngine:
     def spielen(self) -> VollmondErgebnis:
         # Wie am Tisch die Rollenmarker: Alle wissen, welche Karten im Spiel sind.
         im_spiel = sorted(list(self.karten.values()) + self.mitte, key=lambda r: list(Rolle).index(r))
+        self.im_spiel = set(im_spiel)
         karten = ", ".join(r.value for r in im_spiel)
         # Der Spielleiter ruft die Rollen laut auf, also kennen alle die Reihenfolge.
         # Ohne sie lässt sich nicht prüfen, ob zwei Aussagen über Tausche zusammenpassen.
@@ -224,9 +225,32 @@ class VollmondEngine:
         raeuber.bekannte_karte = neu
         raeuber.wissen.append(
             f"Du hast deine Karte mit {ziel} getauscht. Deine neue Karte: {neu.value}. "
-            f"{ziel} hat jetzt deine alte Karte."
+            f"{ziel} hat jetzt deine alte Karte." + self._danach_hinweis(raeuber, ziel)
         )
         self._nachtaktion(raeuber, RAUBEN, ziel=ziel, ergebnis=neu.value)
+
+    def _danach_hinweis(self, raeuber: Spieler, ziel: str) -> str:
+        """Was nach dem Raub noch passieren kann – Regelwissen zur eigenen Nacht.
+
+        In Serie 6 hielten Räuber ehrliche Mitspieler für Lügner: Die beraubte
+        Unruhestifterin tauschte danach noch (sie handelt mit ihrer Startkarte), oder
+        der Räuber wurde selbst noch vertauscht. Beides folgt aus der Reihenfolge.
+        """
+        position = NACHT_REIHENFOLGE.index(raeuber.startrolle)
+        danach = [r for r in NACHT_REIHENFOLGE[position + 1:] if r in self.im_spiel]
+        if not danach:
+            return ""
+        text = (
+            f" Nach dir waren noch dran: {', '.join(r.value for r in danach)}. "
+            "Deine neue Karte kann danach also noch vertauscht worden sein."
+        )
+        beraubt = self.spieler[ziel].startrolle
+        if beraubt in danach:
+            text += (
+                f" {ziel} ist trotzdem noch als {beraubt.value} aufgewacht und hat gehandelt – "
+                "nachts handelt jeder mit seiner Startkarte."
+            )
+        return text
 
     def _unruhestifterin(self, us: Spieler) -> None:
         andere = self._andere(us)
