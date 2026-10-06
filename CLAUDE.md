@@ -160,4 +160,11 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix nach eigener Browser-Partie (gpt-5.4, Partie 522974): Ein Wolf sah die Seherin in der Mitte, behauptete aber
   Schlaflose, obwohl die echte am Tisch saß – die Seherin-Warnung schreckte ab. Jetzt rät der Werwolf-Hinweis, genau die
   gesehene Mittelkarte zu behaupten, auch die Seherin. Macht die Wölfe stärker (neue Basis für spätere Serien).
+- Serie 11, gpt-5.4, nach den drei Browser-Fixes, nur 10 Partien ab Seed 521937 (nicht vergleichbar): 50,9 %
+  (Zufall 27,7 %), Start-Werwölfe 52,8 %, Dorf gewinnt 5/10. Niederlagen: ehrliche Unruhestifterin stirbt (2),
+  Kartenweg übersehen (6, 9), kaum lösbar (7, Wolf nur über den Betrunkenen), 50:50 nach Redereihenfolge (10).
+  Bug: Spieler verwechselten sich mit sich selbst (8: Ben „ich vote Ben“; 3: Anna über „Anna“). Ein Wolf sah den
+  Betrunkenen in der Mitte und behauptete trotzdem Seherin (3) – vermutlich durch „auch die Seherin“ im Hinweis.
+- Fix danach: Eigene Reden und Stimmen stehen im Verlauf als „Name (du)“ (_verlauf_zeile in
+  vollmondnacht/llm_spieler.py), der Werwolf-Hinweis nennt ein Beispiel statt „auch die Seherin“.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.

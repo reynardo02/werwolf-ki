@@ -9,7 +9,7 @@ from typing import Any
 
 from core.tools import ToolSchema
 from werwolf.llm_spieler import LLMSpieler, _liste
-from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Zug
+from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Ereignis, Zug
 from werwolf.vollmondnacht.engine import (
     MITTE_ANSEHEN,
     NACHAHMEN,
@@ -51,12 +51,15 @@ ROLLEN_HINWEISE = {
     # die echte Seherin. Daher konkreter, wie in der Anleitung: Rolle aus der Mitte wählen.
     # Eigene Partie 522974: Wolf sah die Seherin in der Mitte, behauptete trotzdem Schlaflose
     # (die echte saß am Tisch) – die Seherin-Warnung schreckte auch hier ab.
+    # Serie 11, Partie 3: „auch die Seherin“ lenkte auf die Seherin, obwohl der Wolf den
+    # Betrunkenen gesehen hatte – daher jetzt ein Beispiel.
     Rolle.WERWOLF: (
         "Du gehörst zum Werwolfsrudel. Behaupte eine andere Rolle und lenke den Verdacht auf andere. "
         "Am sichersten ist eine Rolle, deren Karte in der Mitte liegt – dann widerspricht dir niemand. "
         "Die Seherin ist riskant: Sitzt die echte Seherin am Tisch, widerspricht sie dir sofort. "
-        "Hast du nachts eine Mittelkarte angesehen, ist genau diese Rolle deine sicherste Behauptung – "
-        "auch die Seherin, denn dann sitzt sie sicher nicht am Tisch. "
+        "Hast du nachts eine Mittelkarte angesehen, behaupte genau die Rolle auf dieser Karte "
+        "(z. B. Betrunkener gesehen → behaupte Betrunkener). Hast du die Seherin gesehen, "
+        "kannst du sicher Seherin behaupten. "
         "Hat ein anderer schon eine Rolle behauptet, die es nur einmal gibt, behaupte nicht dieselbe. "
         "Kein Werwolf darf sterben."
     ),
@@ -155,6 +158,17 @@ def _schon_gesprochen(zug: Zug) -> bool:
     return any(e.art == "rede" and e.daten.get("spieler") == zug.ich for e in zug.ereignisse)
 
 
+def _verlauf_zeile(e: Ereignis, ich: str) -> str:
+    """Eigene Reden und Stimmen bekommen ein „(du)“ hinter den Namen.
+
+    Serie 11: Ben sagte „ich vote Ben“, Anna „Clara klingt glaubwürdiger als Anna“ –
+    im Verlauf standen die eigenen Reden genau wie die der anderen.
+    """
+    if ich in (e.daten.get("spieler"), e.daten.get("von")) and e.text.startswith(ich):
+        return f"{ich} (du){e.text[len(ich):]}"
+    return e.text
+
+
 def rollen_im_spiel(zug: Zug) -> set[Rolle]:
     """Welche Rollen diese Partie hat – steht in der öffentlichen Ansage zu Spielbeginn."""
     for e in zug.ereignisse:
@@ -217,7 +231,7 @@ class VollmondLLMSpieler(LLMSpieler):
             spieler=", ".join(self.gemischt([n for n in zug.lebende if n != zug.ich])),
             geheimwissen=_liste(zug.geheimwissen),
             # Nur eine Runde: Der ganze Verlauf passt in den Kontext, kein Kürzen nötig.
-            ereignisse=_liste([e.text for e in zug.ereignisse]),
+            ereignisse=_liste([_verlauf_zeile(e, zug.ich) for e in zug.ereignisse]),
             aufgabe=aufgabe,
         )
 
