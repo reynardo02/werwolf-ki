@@ -111,6 +111,10 @@ def test_unruhestifterin_und_schlaflose() -> None:
     assert e.karten["Ben"] is R.WERWOLF and e.karten["Clara"] is R.SCHLAFLOSE
     # Die Schlaflose wacht nach der Unruhestifterin auf und sieht ihre neue Karte.
     assert "Am Ende der Nacht liegt diese Karte vor dir: Werwolf." in e.spieler["Ben"].wissen
+    # Am Tag weiß sie es auch strukturiert – der LLM-Spieler wechselt damit die Seite.
+    tageszuege = [z for z in agenten["Ben"].zuege if z.erlaubte_tools[0] == SPRECHEN]
+    assert tageszuege and all(z.bekannte_karte is R.WERWOLF for z in tageszuege)
+    assert agenten["Anna"].zuege[-1].bekannte_karte is None  # kennt ihre Karte nicht
 
 
 def test_unruhestifterin_braucht_zwei_verschiedene_ziele() -> None:

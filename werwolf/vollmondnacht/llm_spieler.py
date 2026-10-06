@@ -39,6 +39,12 @@ KARTENWEG = (
     "vertauscht, liegt seine Werwolf-Karte jetzt beim anderen. Stimme gegen den, der sie jetzt hat."
 )
 
+# Wer nachts eine Karte einer anderen Partei bekommen hat, wechselt die Seite.
+NEUE_PARTEI = (
+    " Wichtig: Vor dir liegt jetzt die Karte {karte}. Damit gehörst du zur Partei {partei} und "
+    "gewinnst nur mit ihr – deine Startkarte zählt nicht mehr."
+)
+
 # Kurze Strategie-Hinweise, angelehnt an die Tipps der Anleitung.
 ROLLEN_HINWEISE = {
     Rolle.WERWOLF: (
@@ -137,11 +143,24 @@ def rollen_im_spiel(zug: Zug) -> set[Rolle]:
     return set(Rolle)  # ohne Ansage (z. B. in Tests): alle Rollen erklären
 
 
-def rollen_hinweis(rolle: Rolle) -> str:
-    """Strategie-Hinweis plus, je nach Partei der Startkarte, Lügen oder Ehrlichkeit."""
+def _partei_hinweis(partei: Partei) -> str:
+    return EHRLICH + KARTENWEG if partei is Partei.DORF else LUEGEN
+
+
+def rollen_hinweis(rolle: Rolle, bekannte_karte: Rolle | None = None) -> str:
+    """Strategie-Hinweis plus, je nach Partei, Lügen oder Ehrlichkeit.
+
+    Maßgeblich ist die Partei der Karte, die der Spieler zuletzt bei sich gesehen hat:
+    Eine Schlaflose, die am Ende Werwolf ist, spielt jetzt fürs Rudel und darf lügen.
+    Vorher bekam sie den Ehrlichkeits-Hinweis ihrer Startkarte und verriet sich selbst.
+    """
+    if bekannte_karte is not None and bekannte_karte.partei is not rolle.partei:
+        return ROLLEN_HINWEISE[rolle] + NEUE_PARTEI.format(
+            karte=bekannte_karte.value, partei=bekannte_karte.partei.value
+        ) + _partei_hinweis(bekannte_karte.partei)
     if rolle is Rolle.DOPPELGAENGERIN:
         return ROLLEN_HINWEISE[rolle]  # Partei steht erst nach dem Nachahmen fest
-    return ROLLEN_HINWEISE[rolle] + (EHRLICH + KARTENWEG if rolle.partei is Partei.DORF else LUEGEN)
+    return ROLLEN_HINWEISE[rolle] + _partei_hinweis(rolle.partei)
 
 
 class VollmondLLMSpieler(LLMSpieler):
@@ -151,7 +170,7 @@ class VollmondLLMSpieler(LLMSpieler):
         return self._system_vorlage.format(
             name=zug.ich,
             rolle=zug.rolle.value,
-            rollen_hinweis=rollen_hinweis(zug.rolle),
+            rollen_hinweis=rollen_hinweis(zug.rolle, zug.bekannte_karte),
             persoenlichkeit=self.persoenlichkeit,
             rollen_im_spiel=faehigkeiten_text(rollen_im_spiel(zug)),
         )

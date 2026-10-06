@@ -99,5 +99,8 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Startkarte und Nachtaktion (ERSTE_REDE in vollmondnacht/llm_spieler.py). Wirkung noch nicht gemessen.
   Konkret mit Namen und Karten: Werwölfe behaupteten „Seherin, zwei Mittelkarten“, ohne sie zu
   nennen. Auch LUEGEN verlangt jetzt passende Einzelheiten zur behaupteten Rolle.
+- Fix: Eine Schlaflose, die morgens eine Werwolf-Karte sah, sagte das offen – sie bekam weiter den
+  Ehrlichkeits-Hinweis ihrer Startkarte. Jetzt kennt der Zug die zuletzt gesehene eigene Karte
+  (`Zug.bekannte_karte`, Räuber/Schlaflose), und der Hinweis richtet sich nach deren Partei (NEUE_PARTEI).
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
