@@ -139,4 +139,10 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Dorf gewinnt 14/20 (Serie 8: 6/20, Fisher p ≈ 0,03). Das Modell war der Flaschenhals, nicht die Prompts.
   Achtung: Auch die Werwölfe spielen mit dem stärkeren Modell – trotzdem gewinnt das Dorf deutlich öfter.
   Logs noch nicht im Detail ausgewertet.
+- Serie 10, gpt-5.4 (groß), LLM_TEMPERATUR=1, aber andere Seeds (ab 263615, nicht 443803) – daher nur grob
+  vergleichbar: 38,1 % (Zufall 21,5 %), Start-Werwölfe 48,7 %, Dorf gewinnt 7/20 (Serie 9: 14/20, p ≈ 0,06).
+  Logs 16–20: Spiel deutlich hochwertiger. Werwölfe wählen unprüfbare Behauptungen (Unruhestifterin tauscht
+  zwei Dorfbewohner), opfern den Partner, ein Räuber mit Werwolf-Karte verschweigt den Raub (NEUE_PARTEI
+  wirkt). Das Dorf baut saubere Kartenketten (Partie 19). Niederlagen jetzt in echten 50:50-Lagen
+  (zwei Schlaflose, zwei Seherinnen) oder bei verdecktem Raub – keine groben Regelfehler mehr.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
