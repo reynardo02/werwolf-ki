@@ -157,4 +157,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Regel-Fix nach eigener Browser-Partie (gpt-5.4, Partie 583495): Das Dorf meinte, die Seherin hätte bei Ben
   schon die Räuber-Karte sehen müssen, und tötete die ehrliche Räuberin. Jetzt steht in den Regeln: Wer nachts eine
   Karte ansieht, sieht den Stand in diesem Moment; die Rollenliste heißt ausdrücklich „in Nachtreihenfolge“.
+- Fix nach eigener Browser-Partie (gpt-5.4, Partie 522974): Ein Wolf sah die Seherin in der Mitte, behauptete aber
+  Schlaflose, obwohl die echte am Tisch saß – die Seherin-Warnung schreckte ab. Jetzt rät der Werwolf-Hinweis, genau die
+  gesehene Mittelkarte zu behaupten, auch die Seherin. Macht die Wölfe stärker (neue Basis für spätere Serien).
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
