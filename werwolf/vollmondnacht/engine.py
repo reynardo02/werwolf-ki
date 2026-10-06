@@ -88,6 +88,7 @@ class VollmondEngine:
         # Wie am Tisch die Rollenmarker: Alle wissen, welche Karten im Spiel sind.
         im_spiel = sorted(list(self.karten.values()) + self.mitte, key=lambda r: list(Rolle).index(r))
         self.im_spiel = set(im_spiel)
+        self.im_spiel_anzahl = Counter(im_spiel)
         karten = ", ".join(r.value for r in im_spiel)
         # Der Spielleiter ruft die Rollen laut auf, also kennen alle die Reihenfolge.
         # Ohne sie lässt sich nicht prüfen, ob zwei Aussagen über Tausche zusammenpassen.
@@ -173,10 +174,15 @@ class VollmondEngine:
             # Einsamer Wolf: darf eine Karte aus der Mitte ansehen.
             wolf, nummer = woelfe[0], self.rng.randrange(3)
             karte = self.mitte[nummer]
-            wolf.wissen.append(
+            wissen = (
                 f"Du bist der einzige Werwolf unter den Spielern. "
                 f"Karte {nummer + 1} aus der Mitte ist: {karte.value}."
             )
+            # Gibt es die Karte nur einmal, folgt daraus: Niemand hat mit ihr begonnen.
+            # Genau so eine Rolle empfiehlt die Anleitung dem Werwolf zum Behaupten.
+            if karte is not Rolle.WERWOLF and self.im_spiel_anzahl[karte] == 1:
+                wissen += f" Also hatte kein Mitspieler zu Beginn die Karte {karte.value}."
+            wolf.wissen.append(wissen)
             self._nachtaktion(wolf, "mitte_ansehen", karte=str(nummer + 1), ergebnis=karte.value)
 
     def _guenstling(self, guenstling: Spieler) -> None:
