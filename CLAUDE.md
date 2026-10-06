@@ -167,4 +167,11 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Betrunkenen in der Mitte und behauptete trotzdem Seherin (3) – vermutlich durch „auch die Seherin“ im Hinweis.
 - Fix danach: Eigene Reden und Stimmen stehen im Verlauf als „Name (du)“ (_verlauf_zeile in
   vollmondnacht/llm_spieler.py), der Werwolf-Hinweis nennt ein Beispiel statt „auch die Seherin“.
+- Serie 12, gpt-5.4, nach dem (du)-Fix, 20 Partien ab Seed 920519 (andere Seeds, nicht vergleichbar): 48,1 %
+  (Zufall 25,9 %), Dorf gewinnt 9/20. Selbstverwechslung nicht mehr gesehen. 11 Niederlagen: 4× Kartenweg übersehen,
+  obwohl der Tauscher ihn offen nannte (4, 5, 8, 18); 3× ehrlicher Getauschter verdächtig, weil er nur die Startkarte
+  nennt (7, 11, 14); 2× 50:50 nach Redereihenfolge (6, 20); 1× ehrliche Seherin (19); 1× nur per Kartenzählen lösbar (2).
+  Gesehene Mittelkarte behaupten: 2 von 6 einsamen Wölfen perfekt (11, 12), 3 verrieten dabei die Mittelkarte (1, 10, 18).
+  Künftige Serien besser mit festen Seeds (z. B. --seed 263615), damit Unterschiede vergleichbar sind.
+- Fix danach: Werwolf-Hinweis verbietet, die gesehene Mittelkarte zu erwähnen.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
