@@ -95,6 +95,13 @@ AUFGABEN = {
     ),
 }
 
+# Manche Spieler (vor allem Werwölfe) redeten herum, ohne je eine Karte zu nennen.
+# Am Tisch fragt man das als Erstes – daher Pflicht in der ersten Wortmeldung.
+ERSTE_REDE = (
+    "\n\nDas ist deine erste Wortmeldung: Sag als Erstes, welche Karte du zu Beginn hattest "
+    "und was du nachts getan oder gesehen hast."
+)
+
 BESCHREIBUNGEN = {
     NACHAHMEN: "Sieh dir die Karte eines Mitspielers an und übernimm seine Rolle und Partei.",
     SPIELER_ANSEHEN: "Sieh dir heimlich die Karte eines Mitspielers an.",
@@ -110,6 +117,10 @@ _TEXT = {
     SPRECHEN: {"text": {"type": "string", "description": "Was du sagst, 1–3 Sätze."}},
 }
 _BEGRUENDUNG = {"type": "string", "description": "Deine ehrliche, private Begründung. Niemand sieht sie."}
+
+
+def _schon_gesprochen(zug: Zug) -> bool:
+    return any(e.art == "rede" and e.daten.get("spieler") == zug.ich for e in zug.ereignisse)
 
 
 def rollen_im_spiel(zug: Zug) -> set[Rolle]:
@@ -141,6 +152,8 @@ class VollmondLLMSpieler(LLMSpieler):
 
     def zug_prompt(self, zug: Zug) -> str:
         aufgabe = AUFGABEN[zug.erlaubte_tools[0]]
+        if zug.erlaubte_tools[0] == SPRECHEN and not _schon_gesprochen(zug):
+            aufgabe += ERSTE_REDE
         if zug.hinweis:
             aufgabe += f"\n\nDein letzter Versuch war ungültig: {zug.hinweis} Versuch es noch einmal."
         return self._zug_vorlage.format(
