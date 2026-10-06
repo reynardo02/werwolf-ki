@@ -174,4 +174,12 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Gesehene Mittelkarte behaupten: 2 von 6 einsamen Wölfen perfekt (11, 12), 3 verrieten dabei die Mittelkarte (1, 10, 18).
   Künftige Serien besser mit festen Seeds (z. B. --seed 263615), damit Unterschiede vergleichbar sind.
 - Fix danach: Werwolf-Hinweis verbietet, die gesehene Mittelkarte zu erwähnen.
+- Serie 13, gpt-5.4, mit diesem Fix, dieselben 20 Seeds wie Serie 12 (920519–920538): 44,4 % (Zufall 25,9 %),
+  Dorf gewinnt 8/20. Gleiche Seeds machen Partien direkt vergleichbar: Das Ergebnis kippt trotzdem in 9 von 20 Seeds
+  (Temperatur 1) – 20 Partien reichen nur für häufige Verhaltensweisen, nicht für ±1 Sieg. Fix wirkt: Keiner der 3 Wölfe
+  aus 519/528/536 verrät mehr seine Mittelkarte. Nebenwirkung: Wölfe behaupten jetzt oft „Räuber“ (7 statt 2 Seeds),
+  ehrliche Räuber sterben im 50:50 (6 statt 1). Bug: Wer nachts zum Werwolf wird, verrät es oft trotzdem in der
+  ersten Rede („Ich war Schlaflose und jetzt bin ich Werwolf“; 4 von 6 Fällen in Serie 12+13).
+- Fix danach: Wer nachts von Dorf auf eine andere Partei gewechselt ist, bekommt in jeder Rede die Warnung, das
+  nicht zu verraten (NICHT_VERRATEN in vollmondnacht/llm_spieler.py). Messbar in den Seeds 920522, 920528, 920533.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.

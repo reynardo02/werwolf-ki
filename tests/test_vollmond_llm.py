@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from core.llm_client import Antwort
 from core.tools import ToolCall, ToolSchema
-from werwolf.schnittstelle import SPRECHEN, Phase, Zug
+from werwolf.schnittstelle import SPRECHEN, Ereignis, Phase, Zug
 from werwolf.vollmondnacht.engine import NACHAHMEN, NICHTS_TUN, VERTAUSCHEN, VollmondEngine
 from werwolf.vollmondnacht.llm_spieler import ROLLEN_HINWEISE, VollmondLLMSpieler
 from werwolf.vollmondnacht.rollen import Rolle, szenario_karten
@@ -173,6 +173,25 @@ def test_raeuber_mit_werwolf_karte_verraet_sich_nicht() -> None:
     assert ERSTE_REDE in nachricht and TAUSCH_FOLGE not in nachricht
     assert "Darfst du lügen" in ERSTE_REDE
     assert TAUSCH_FOLGE in spieler.zug_prompt(replace(zug, bekannte_karte=Rolle.DORFBEWOHNER))
+
+
+def test_wer_nachts_werwolf_wird_soll_es_nicht_verraten() -> None:
+    # Serie 12/13: Schlaflose und Räuber mit Werwolf-Karte sagten „jetzt bin ich Werwolf“.
+    from werwolf.vollmondnacht.llm_spieler import NICHT_VERRATEN
+
+    spieler = VollmondLLMSpieler(FakeClient(), "ruhig")
+    warnung = NICHT_VERRATEN.format(karte="Werwolf")
+    zug = Zug(ich="Ben", rolle=Rolle.SCHLAFLOSE, runde=1, phase=Phase.DISKUSSION,
+              erlaubte_tools=[SPRECHEN], lebende=["Anna", "Ben"], geheimwissen=[], notizen=[],
+              ereignisse=[], bekannte_karte=Rolle.WERWOLF)
+    assert warnung in spieler.zug_prompt(zug)
+    # Auch in späteren Reden, aber nicht für Spieler, die beim Dorf geblieben sind.
+    rede = Ereignis(1, Phase.DISKUSSION, 'Ben: "Hallo."', art="rede", daten={"spieler": "Ben"})
+    assert warnung in spieler.zug_prompt(replace(zug, ereignisse=[rede]))
+    assert "Verrate das auf keinen Fall" not in spieler.zug_prompt(
+        replace(zug, bekannte_karte=Rolle.SCHLAFLOSE))
+    assert "Verrate das auf keinen Fall" not in spieler.zug_prompt(
+        replace(zug, rolle=Rolle.WERWOLF, bekannte_karte=None))
 
 
 def test_regeln_sagen_dass_nur_die_startkarte_handelt() -> None:
