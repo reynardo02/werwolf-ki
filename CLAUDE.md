@@ -183,9 +183,10 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix danach: Wer nachts von Dorf auf eine andere Partei gewechselt ist, bekommt in jeder Rede die Warnung, das
   nicht zu verraten (NICHT_VERRATEN in vollmondnacht/llm_spieler.py). Messbar in den Seeds 920522, 920528, 920533.
 - Serie 14, gpt-5.4, mit NICHT_VERRATEN, wieder Seeds 920519–920538: 54,6 % (Zufall 25,9 %), Start-Werwölfe 47,2 %,
-  Dorf gewinnt 10/20 (Serie 13: 8/20 – im Rauschen). Fix wirkt in beiden geprüften Fällen: In 920533 lügt die zum
-  Werwolf gewordene Schlaflose („Ich war die Seherin“) statt sich zu verraten, in 920537 lügt die Räuberin, die einen
-  Wolf geraubt hat („Unruhestifterin“). Räuber-Muster bleibt: Wölfe behaupten „Räuber, Dorfbewohner gesehen“, und der
+  Dorf gewinnt 10/20 (Serie 13: 8/20 – im Rauschen). Fix wirkt in allen drei Fällen: In 920533 lügt die zum
+  Werwolf gewordene Schlaflose („Ich war die Seherin“) statt sich zu verraten, in 920522 und 920537 lügen Räuberinnen,
+  die einen Wolf geraubt haben („Unruhestifterin, X und Y vertauscht“) – in 522 so gut, dass das Dorf die ehrliche
+  Schlaflose tötet. In 920528 wechselte diesmal niemand die Partei. Räuber-Muster bleibt: Wölfe behaupten „Räuber, Dorfbewohner gesehen“, und der
   echte Räuber stirbt im 50:50 (529, 534, 538). Keine groben Regelfehler mehr in den Logs – die Prompt-Phase ist
   damit vorerst abgeschlossen; die restlichen Niederlagen sind echte Spielfehler oder gute Wolf-Lügen.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
