@@ -111,7 +111,7 @@ AUFGABEN = {
 ERSTE_REDE = (
     "\n\nDas ist deine erste Wortmeldung: Sag als Erstes, welche Karte du zu Beginn hattest "
     "und was du nachts getan oder gesehen hast – konkret: wessen Karte bzw. welche Mittelkarten "
-    "und welche Rollen darauf standen."
+    "und welche Rollen darauf standen. Darfst du lügen, ist das deine erfundene Geschichte."
 )
 
 # Eigene Partien: Die Unruhestifterin sagte offen „Anna und Emil vertauscht“, trotzdem stimmte
@@ -158,6 +158,13 @@ def _partei_hinweis(partei: Partei) -> str:
     return EHRLICH + KARTENWEG if partei is Partei.DORF else LUEGEN
 
 
+def _aktuelle_partei(zug: Zug) -> Partei:
+    """Partei nach dem eigenen Kartenwissen: zuletzt gesehene Karte, sonst Startkarte."""
+    karte = zug.bekannte_karte if isinstance(zug.bekannte_karte, Rolle) else zug.rolle
+    assert isinstance(karte, Rolle)
+    return karte.partei
+
+
 def rollen_hinweis(rolle: Rolle, bekannte_karte: Rolle | None = None) -> str:
     """Strategie-Hinweis plus, je nach Partei, Lügen oder Ehrlichkeit.
 
@@ -190,7 +197,9 @@ class VollmondLLMSpieler(LLMSpieler):
         aufgabe = AUFGABEN[zug.erlaubte_tools[0]]
         if zug.erlaubte_tools[0] == SPRECHEN and not _schon_gesprochen(zug):
             aufgabe += ERSTE_REDE
-            if zug.rolle in TAUSCHER:
+            # Nur wer noch zum Dorf gehört: Ein Räuber, der einen Werwolf geraubt hat,
+            # würde sich sonst selbst verraten (Serie 6, Partien 7 und 8).
+            if zug.rolle in TAUSCHER and _aktuelle_partei(zug) is Partei.DORF:
                 aufgabe += TAUSCH_FOLGE
         if zug.hinweis:
             aufgabe += f"\n\nDein letzter Versuch war ungültig: {zug.hinweis} Versuch es noch einmal."
