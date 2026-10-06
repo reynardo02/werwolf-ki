@@ -154,4 +154,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   erst nachts bekommt, hätte am Ende etwas sehen müssen, hielt deshalb die ehrliche Unruhestifterin für eine
   Lügnerin und tötete die echte Seherin. Jetzt steht in den Regeln für alle: Nachts handelt jeder nur mit
   seiner Startkarte (vollmondnacht/prompts/system.txt). Bisher stand das nur im Dorf-Hinweis KARTENWEG.
+- Regel-Fix nach eigener Browser-Partie (gpt-5.4, Partie 583495): Das Dorf meinte, die Seherin hätte bei Ben
+  schon die Räuber-Karte sehen müssen, und tötete die ehrliche Räuberin. Jetzt steht in den Regeln: Wer nachts eine
+  Karte ansieht, sieht den Stand in diesem Moment; die Rollenliste heißt ausdrücklich „in Nachtreihenfolge“.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
