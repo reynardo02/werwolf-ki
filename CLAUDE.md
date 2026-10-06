@@ -102,5 +102,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix: Eine Schlaflose, die morgens eine Werwolf-Karte sah, sagte das offen – sie bekam weiter den
   Ehrlichkeits-Hinweis ihrer Startkarte. Jetzt kennt der Zug die zuletzt gesehene eigene Karte
   (`Zug.bekannte_karte`, Räuber/Schlaflose), und der Hinweis richtet sich nach deren Partei (NEUE_PARTEI).
-- Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
+- Persönlichkeit „lenkt gern vom Thema ab“ ersetzt durch „teilt ausführlich die eigenen Gedanken“: In eigenen
+  Partien redete sie 3× über Wetter und Kaffee statt über die Partie. Gleiche Anzahl Persönlichkeiten,
+  also bleibt die Verteilung bei gleichem Seed gleich.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
