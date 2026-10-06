@@ -11,7 +11,6 @@ from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from core.konfig import konfig_laden
 from core.llm_client import (
@@ -28,11 +27,12 @@ from werwolf.aufbau import (  # noqa: F401 – NAMEN & Co. nutzen auch web/ und 
     agenten_bauen,
     engine_bauen,
     ergebnis_zusammenfassen,
+    kopf_bauen,
+    protokoll_kopf,
 )
 from werwolf.jsonl_log import JsonlLog
 from werwolf.protokoll import Protokoll
 from werwolf.schnittstelle import Agent, Ereignis
-from werwolf.vollmondnacht.engine import VollmondEngine
 from werwolf.vollmondnacht.rollen import szenario_namen
 
 LOGS = Path(__file__).parent / "logs"
@@ -70,7 +70,7 @@ def partie_spielen(
         szenario = szenario_namen(anzahl_spieler)[0]
 
     besetzung = agenten_bauen(seed, rng, namen, anzahl_llm, client, regeln, mensch, mensch_spieler)
-    agenten, persoenlichkeit_von, typ_von = besetzung.agenten, besetzung.persoenlichkeit_von, besetzung.typ_von
+    agenten, typ_von = besetzung.agenten, besetzung.typ_von
 
     # Spielst du selbst mit, darf die Konsole nichts Geheimes zeigen.
     protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch and konsole else None)
@@ -88,40 +88,12 @@ def partie_spielen(
 
     engine, rolle_von = engine_bauen(regeln, agenten, rng, szenario or "", beobachten)
     modell = client.modell if client else None
-    kopf: dict[str, Any] = {
-        "zeit": datetime.now().isoformat(timespec="seconds"),
-        "regeln": regeln,
-        "modell": modell,
-        "seed": seed,
-        "spieler": [
-            {
-                "name": name,
-                "rolle": rolle_von[name],
-                "typ": typ_von[name],
-                "persoenlichkeit": persoenlichkeit_von[name],
-            }
-            for name in namen
-        ],
-    }
-    if isinstance(engine, VollmondEngine):
-        kopf["szenario"] = szenario
-        kopf["mitte"] = [r.value for r in engine.mitte]
+    kopf = kopf_bauen(regeln, modell, seed, namen, rolle_von, besetzung, engine, szenario)
     log = JsonlLog(ordner / f"{dateiname}.jsonl", kopf)
     beobachter.append(log)
 
-    titel = f"Werwolf ({regeln}) – {datetime.now():%d.%m.%Y %H:%M} – Seed {seed}"
-    if szenario:
-        titel += f" – Szenario: {szenario}"
-    if modell:
-        titel += f" – Modell: {modell}"
-    art_von = {"mensch": "Mensch", "mock": "MockAgent"}
-    besetzung = [
-        f"{n}: {rolle_von[n]} ({f'LLM, {persoenlichkeit_von[n]}' if typ_von[n] == 'llm' else art_von[typ_von[n]]})"
-        for n in namen
-    ]
-    if "mitte" in kopf:
-        besetzung.append(f"Mitte: {', '.join(kopf['mitte'])}")
-    protokoll.kopf(titel, besetzung)
+    titel, zeilen = protokoll_kopf(kopf)
+    protokoll.kopf(titel, zeilen)
     if mensch and konsole:
         andere = ", ".join(f"{n} ({'LLM' if typ_von[n] == 'llm' else 'MockAgent'})" for n in namen if n != mensch)
         print(f"{titel}\nDu spielst als {mensch}. Am Tisch: {andere}.")

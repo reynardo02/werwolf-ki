@@ -7,6 +7,7 @@ main.py lädt die .env und das openai-SDK, beides gibt es im Browser nicht.
 import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from core.llm_client import LLMClient
@@ -97,3 +98,47 @@ def agenten_bauen(
             b.persoenlichkeit_von[name] = None
             b.typ_von[name] = "mock"
     return b
+
+
+def kopf_bauen(
+    regeln: str, modell: str | None, seed: int, namen: list[str], rolle_von: dict[str, str],
+    besetzung: Besetzung, engine: Engine | VollmondEngine, szenario: str | None,
+) -> dict[str, Any]:
+    """Erste Zeile des JSONL-Logs: Wer hat mit welcher Karte gespielt?"""
+    kopf: dict[str, Any] = {
+        "zeit": datetime.now().isoformat(timespec="seconds"),
+        "regeln": regeln,
+        "modell": modell,
+        "seed": seed,
+        "spieler": [
+            {
+                "name": name,
+                "rolle": rolle_von[name],
+                "typ": besetzung.typ_von[name],
+                "persoenlichkeit": besetzung.persoenlichkeit_von[name],
+            }
+            for name in namen
+        ],
+    }
+    if isinstance(engine, VollmondEngine):
+        kopf["szenario"] = szenario
+        kopf["mitte"] = [r.value for r in engine.mitte]
+    return kopf
+
+
+def protokoll_kopf(kopf: dict[str, Any]) -> tuple[str, list[str]]:
+    """Titel und Besetzung für das lesbare Protokoll, aus dem Log-Kopf."""
+    zeit = datetime.fromisoformat(kopf["zeit"])
+    titel = f"Werwolf ({kopf['regeln']}) – {zeit:%d.%m.%Y %H:%M} – Seed {kopf['seed']}"
+    if kopf.get("szenario"):
+        titel += f" – Szenario: {kopf['szenario']}"
+    if kopf.get("modell"):
+        titel += f" – Modell: {kopf['modell']}"
+    art_von = {"mensch": "Mensch", "mock": "MockAgent"}
+    zeilen = []
+    for s in kopf["spieler"]:
+        art = f"LLM, {s['persoenlichkeit']}" if s["typ"] == "llm" else art_von[s["typ"]]
+        zeilen.append(f"{s['name']}: {s['rolle']} ({art})")
+    if "mitte" in kopf:
+        zeilen.append(f"Mitte: {', '.join(kopf['mitte'])}")
+    return titel, zeilen

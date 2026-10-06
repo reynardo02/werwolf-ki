@@ -19,39 +19,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from main import NAMEN, SPIELERZAHL, VOLLMONDNACHT
+from web.einstellungen import Fehler, einstellungen_pruefen, optionen
 from web.sitzung import Sitzung
-from werwolf.vollmondnacht.rollen import szenario_namen
 
 STARTSEITE = Path(__file__).parent / "static" / "index.html"
 
 
-class Fehler(Exception):
-    """Ungültige Anfrage: wird als 400 mit Meldung an den Browser geschickt."""
-
-
 def sitzung_aus_anfrage(daten: dict[str, Any], ordner: Path | None = None) -> Sitzung:
     """Prüft die Einstellungen aus dem Formular und baut daraus eine Sitzung."""
-    regeln = daten.get("regeln")
-    if regeln not in SPIELERZAHL:
-        raise Fehler(f"Unbekannte Regeln: {regeln}")
-    try:
-        spieler = int(daten.get("spieler", 7))
-    except (TypeError, ValueError):
-        raise Fehler("Spielerzahl muss eine Zahl sein") from None
-    minimum, maximum = SPIELERZAHL[regeln]
-    if not minimum <= spieler <= maximum:
-        raise Fehler(f"Bei {regeln} sind {minimum} bis {maximum} Spieler möglich")
-    llm = str(daten.get("llm", "alle"))
-    if llm != "alle" and not (llm.isdigit() and int(llm) <= spieler - 1):
-        raise Fehler(f"LLM-Spieler: 'alle' oder 0 bis {spieler - 1}")
-    szenario = daten.get("szenario") or None
-    if szenario is not None and (regeln != VOLLMONDNACHT or szenario not in szenario_namen(spieler)):
-        raise Fehler(f"Szenario '{szenario}' passt nicht zu {regeln} mit {spieler} Spielern")
-    ich = daten.get("ich") or NAMEN[0]
-    if ich not in NAMEN[:spieler]:
-        raise Fehler(f"Platz '{ich}' gibt es bei {spieler} Spielern nicht")
-    return Sitzung(regeln=regeln, spieler=spieler, llm=llm, ich=ich, szenario=szenario, ordner=ordner)
+    e = einstellungen_pruefen(daten)
+    return Sitzung(regeln=e.regeln, spieler=e.spieler, llm=e.llm, ich=e.ich, szenario=e.szenario, ordner=ordner)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -95,10 +72,7 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/optionen":
             wert = abfrage.get("spieler", ["7"])[0]
             spieler = int(wert) if wert.isdigit() else 0
-            self._json({
-                "namen": NAMEN[:spieler],
-                "szenarien": szenario_namen(spieler) if 3 <= spieler <= 10 else [],
-            })
+            self._json(optionen(spieler))
         elif url.path == "/api/zustand":
             sitzung = self.server.sitzung
             if sitzung is None:
