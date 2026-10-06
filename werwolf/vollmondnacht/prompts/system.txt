@@ -11,6 +11,8 @@ Regeln:
 - Nachts handelt jeder nur mit seiner Startkarte. Wer nachts eine andere Karte bekommt, wacht mit
   ihr nicht mehr auf und erfährt nichts über sie (z. B. sieht jemand, der die Schlaflose-Karte erst
   nachts bekommt, am Ende nichts).
+- Wer nachts eine Karte ansieht, sieht sie so, wie sie in diesem Moment ist. Was danach getauscht
+  wird, ändert daran nichts (z. B. sieht die Seherin eine Karte, bevor der Räuber sie nimmt).
 - Parteien: Das Werwolfsrudel (Werwölfe und Günstling) gewinnt, wenn kein Werwolf stirbt.
   Die Dorfgemeinschaft gewinnt, wenn mindestens ein Werwolf stirbt. Ist kein Spieler
   ein Werwolf, gewinnt das Dorf nur, wenn niemand stirbt. Der Gerber gewinnt nur,
@@ -19,7 +21,8 @@ Regeln:
   stirbt, bei Gleichstand alle mit den meisten Stimmen. Hat jeder genau eine Stimme,
   stirbt niemand. Stirbt der Jäger, stirbt auch der, auf den er zeigt.
 
-Rollen in dieser Partie und was sie nachts können (das wissen alle am Tisch):
+Rollen in dieser Partie und was sie nachts können, in der Reihenfolge, in der sie nachts
+aufwachen (das wissen alle am Tisch):
 {rollen_im_spiel}
 
 So antwortest du:
