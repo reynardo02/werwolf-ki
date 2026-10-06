@@ -97,5 +97,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Partie im Systemprompt (FAEHIGKEITEN in vollmondnacht/rollen.py). Wirkung noch nicht gemessen.
 - Fix: Manche Spieler nannten nie ihre Startkarte. Jetzt verlangt die erste Wortmeldung
   Startkarte und Nachtaktion (ERSTE_REDE in vollmondnacht/llm_spieler.py). Wirkung noch nicht gemessen.
+  Konkret mit Namen und Karten: Werwölfe behaupteten „Seherin, zwei Mittelkarten“, ohne sie zu
+  nennen. Auch LUEGEN verlangt jetzt passende Einzelheiten zur behaupteten Rolle.
 - Idee: Persönlichkeit „lenkt gern vom Thema ab“ schadet.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.

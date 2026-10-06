@@ -127,3 +127,5 @@ def test_erste_wortmeldung_verlangt_die_startkarte() -> None:
     reden = [nachricht for _, nachricht, tools in client.anfragen_liste if tools[0].name == "sprechen"]
     # 3 Spieler × 2 Diskussionsrunden: nur die ersten drei Reden verlangen die Startkarte.
     assert [ERSTE_REDE.strip() in r for r in reden] == [True, True, True, False, False, False]
+    # Vage Behauptungen („zwei Mittelkarten angesehen“) reichen nicht: Die Karten müssen genannt werden.
+    assert "welche Mittelkarten" in ERSTE_REDE
