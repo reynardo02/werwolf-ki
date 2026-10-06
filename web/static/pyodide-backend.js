@@ -137,7 +137,12 @@ async function llmFragen(anfrage, p) {
     const antwort = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${zugang.key}` },
-      body: JSON.stringify({ ...anfrage, model: zugang.modell }),
+      // Die Temperatur kommt aus Python (0,9). Manche Anbieter (GPT-5) nehmen nur 1 an,
+      // deshalb darf die Anbieter-Vorlage sie überschreiben.
+      body: JSON.stringify({
+        ...anfrage, model: zugang.modell,
+        ...(zugang.temperatur !== undefined && { temperature: zugang.temperatur }),
+      }),
     });
     if (antwort.ok) return antwort.json();
 

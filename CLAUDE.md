@@ -65,6 +65,7 @@ beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe)
 Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server.py, web/static/index.html;
 getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
+  Anbieter-Auswahl im LLM-Zugang (Gemini, OpenAI, eigene); OpenAI schickt temperature=1.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
@@ -134,4 +135,19 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Widersprüchen oft den falschen Schluss. Nebenwirkung von _danach_hinweis: Räuber, die sagen „meine Karte
   kann sich noch geändert haben“, wirken auf andere wie Ausreden (Partie 3).
   Nächster Schritt: Serie 9 mit stärkerem Modell, sonst unverändert.
-Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
+- Serie 9, gpt-5.4-mini statt gemini-3.5-flash-lite (dazu LLM_TEMPERATUR=1, weil GPT-5-Modelle oft nur 1
+  annehmen), sonst wie Serie 8, 20 Partien ab Seed 443803: 69,4 % (Zufall 25,6 %), Start-Werwölfe 49,1 %,
+  Dorf gewinnt 14/20 (Serie 8: 6/20, Fisher p ≈ 0,03). Das Modell war der Flaschenhals, nicht die Prompts.
+  Achtung: Auch die Werwölfe spielen mit dem stärkeren Modell – trotzdem gewinnt das Dorf deutlich öfter.
+  Logs noch nicht im Detail ausgewertet.
+- Serie 10, gpt-5.4 (groß), LLM_TEMPERATUR=1, aber andere Seeds (ab 263615, nicht 443803) – daher nur grob
+  vergleichbar: 38,1 % (Zufall 21,5 %), Start-Werwölfe 48,7 %, Dorf gewinnt 7/20 (Serie 9: 14/20, p ≈ 0,06).
+  Spielqualität deutlich höher: Werwölfe behaupten meist „Schlaflose“ (13/26) oder Unprüfbares, decken sich
+  gegenseitig (Partie 13: Wolf-Unruhestifterin „erklärt“ die doppelte Schlaflose des Partners), opfern den
+  Partner (16), ein nachts zum Werwolf gewordener Spieler sagt die Wahrheit und lenkt damit auf den alten
+  Wolf (8). Das Dorf baut saubere Kartenketten (14, 19). 13 Niederlagen: ~4× geschickte Wolf-Täuschung oder
+  echtes 50:50 (zwei Schlaflose/Seherinnen), 3× Kartenweg übersehen, 3× ehrlicher Info-Spieler trotz
+  lösbarer Lage, 2× kaum lösbar (Werwolf nur über den Betrunkenen am Tisch; Partie 5 ohne Werwolf am Tisch,
+  das Dorf hätte niemanden töten dürfen). Die Siegquote misst ab hier nicht mehr nur das Dorf – die Wölfe
+  werden mit dem Modell genauso besser.
+Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
