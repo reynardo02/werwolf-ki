@@ -22,8 +22,9 @@ zum Beispiel kostenlos bei [Google AI Studio](https://aistudio.google.com) („G
 oder bei [OpenAI](https://platform.openai.com/api-keys). Trag ihn auf der Seite unten bei
 **„LLM-Zugang“** ein und wähle den Anbieter – Adresse und Modell werden dann eingetragen.
 
-- **Google Gemini** (`gemini-3.5-flash-lite`): günstig, im kostenlosen Tarif nutzbar.
-- **OpenAI** (`gpt-5.4-mini`): spielt in unseren Tests deutlich logischer, kostet aber ein paar Cent pro Partie.
+- **OpenAI** (`gpt-5.4`, voreingestellt): spielt in unseren Tests am besten – Werwölfe bluffen geschickt,
+  das Dorf zieht saubere Schlüsse. Kostet ein paar Cent pro Partie.
+- **Google Gemini** (`gemini-3.5-flash-lite`): günstig, im kostenlosen Tarif nutzbar, spielt aber deutlich schwächer.
 
 - Der Key bleibt in deinem Browser und wird nur an den LLM-Anbieter geschickt.
 - Ohne Key wählst du bei „LLM-Mitspieler“ **„keine“** und spielst gegen einfache Zufallsspieler.

@@ -65,7 +65,7 @@ beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe)
 Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server.py, web/static/index.html;
 getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
-  Anbieter-Auswahl im LLM-Zugang (Gemini, OpenAI, eigene); OpenAI schickt temperature=1.
+  Anbieter-Auswahl im LLM-Zugang (OpenAI mit gpt-5.4 als Standard, Gemini, eigene); OpenAI schickt temperature=1.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
@@ -150,4 +150,8 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   lösbarer Lage, 2× kaum lösbar (Werwolf nur über den Betrunkenen am Tisch; Partie 5 ohne Werwolf am Tisch,
   das Dorf hätte niemanden töten dürfen). Die Siegquote misst ab hier nicht mehr nur das Dorf – die Wölfe
   werden mit dem Modell genauso besser.
+- Regel-Fix nach eigener Browser-Partie (gpt-5.4, Partie 667996): Das Dorf meinte, wer die Schlaflose-Karte
+  erst nachts bekommt, hätte am Ende etwas sehen müssen, hielt deshalb die ehrliche Unruhestifterin für eine
+  Lügnerin und tötete die echte Seherin. Jetzt steht in den Regeln für alle: Nachts handelt jeder nur mit
+  seiner Startkarte (vollmondnacht/prompts/system.txt). Bisher stand das nur im Dorf-Hinweis KARTENWEG.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
