@@ -126,4 +126,12 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix danach: Werwolf-Hinweis rät konkret zu einer Rolle aus der Mitte, warnt vor der Seherin und vor
   doppelten Behauptungen. Der einsame Wolf erfährt, ob niemand mit seiner gesehenen Karte begonnen hat.
   Macht die Wölfe stärker – Serie 8 ist damit eine neue Basis, nicht mit 6/7 vergleichbar.
+- Serie 8, neue Basis mit diesem Fix, 20 Partien ab Seed 443803: 37,0 % (Zufall 25,9 %), Start-Werwölfe
+  33,3 %, Dorf gewinnt 6/20. Werwolf-Behauptungen jetzt gestreut (Seherin 8/22, Schlaflose 8/22, Rest
+  andere), nur 3 von 22 Wölfen sterben. 14 Niederlagen: 12× stirbt ein ehrlicher Spieler mit Info
+  (7× Räuber/Unruhestifterin, „hat Chaos gestiftet“; 3× die echte Seherin gegen eine Wolf-Seherin;
+  Betrunkener, Schlaflose), 2× Kartenweg übersehen. Das Wissen ist da, das Modell zieht aus
+  Widersprüchen oft den falschen Schluss. Nebenwirkung von _danach_hinweis: Räuber, die sagen „meine Karte
+  kann sich noch geändert haben“, wirken auf andere wie Ausreden (Partie 3).
+  Nächster Schritt: Serie 9 mit stärkerem Modell, sonst unverändert.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.
