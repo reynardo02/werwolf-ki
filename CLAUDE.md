@@ -119,5 +119,11 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix danach: ERSTE_REDE erlaubt Lügnern ihre erfundene Geschichte, TAUSCH_FOLGE nur noch für Spieler, die nach
   ihrem Kartenwissen zum Dorf gehören. Der Räuber erfährt im Geheimwissen, wer nach ihm noch dran war und dass
   der Beraubte trotzdem mit seiner Startkarte handelt (_danach_hinweis in vollmondnacht/engine.py).
-  Nächster Schritt: Serie 7 mit denselben Seeds.
+- Serie 7, mit diesen Fixes, 20 Partien ab Seed 443803: 50,9 % (Zufall 25,9 %), Start-Werwölfe 62,0 %
+  (Serie 6: 43,5 %), Dorf gewinnt 10/20. Siege wie Serie 6, Stimmen gegen Start-Wölfe deutlich höher.
+  27 von 29 Werwölfen behaupteten „Seherin“ (oft beide Wölfe zugleich), 12 davon starben. 10 Niederlagen:
+  7× stirbt ein ehrlicher Spieler (3× die echte Seherin gegen Wolf-Seherinnen), 3× Kartenweg übersehen.
+- Fix danach: Werwolf-Hinweis rät konkret zu einer Rolle aus der Mitte, warnt vor der Seherin und vor
+  doppelten Behauptungen. Der einsame Wolf erfährt, ob niemand mit seiner gesehenen Karte begonnen hat.
+  Macht die Wölfe stärker – Serie 8 ist damit eine neue Basis, nicht mit 6/7 vergleichbar.
 Als Nächstes: offen – z. B. stärkeres Modell vergleichen oder Agenten-Kern für die Simulation herauslösen.

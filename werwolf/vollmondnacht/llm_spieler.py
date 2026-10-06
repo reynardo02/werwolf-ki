@@ -47,9 +47,14 @@ NEUE_PARTEI = (
 
 # Kurze Strategie-Hinweise, angelehnt an die Tipps der Anleitung.
 ROLLEN_HINWEISE = {
+    # Serie 7: 27 von 29 Werwölfen behaupteten „Seherin“ – oft beide Wölfe zugleich oder gegen
+    # die echte Seherin. Daher konkreter, wie in der Anleitung: Rolle aus der Mitte wählen.
     Rolle.WERWOLF: (
-        "Du gehörst zum Werwolfsrudel. Behaupte eine andere Rolle, am besten eine, deren Karte "
-        "in der Mitte liegt, und lenke den Verdacht auf andere. Kein Werwolf darf sterben."
+        "Du gehörst zum Werwolfsrudel. Behaupte eine andere Rolle und lenke den Verdacht auf andere. "
+        "Am sichersten ist eine Rolle, deren Karte in der Mitte liegt – dann widerspricht dir niemand. "
+        "Die Seherin ist riskant: Sitzt die echte Seherin am Tisch, widerspricht sie dir sofort. "
+        "Hat ein anderer schon eine Rolle behauptet, die es nur einmal gibt, behaupte nicht dieselbe. "
+        "Kein Werwolf darf sterben."
     ),
     Rolle.GUENSTLING: (
         "Du gehörst zum Werwolfsrudel, die Werwölfe kennen dich aber nicht. Schütze sie. "

@@ -280,3 +280,23 @@ def test_raeuber_ohne_spaetere_rollen_bekommt_keinen_zusatz() -> None:
     e = engine(verteilung, [R.SEHERIN, R.DORFBEWOHNER, R.DORFBEWOHNER], agenten)
     e.spielen()
     assert not any("Nach dir" in w for w in e.spieler["Anna"].wissen)
+
+
+def test_einsamer_wolf_weiss_welche_rolle_niemand_hat() -> None:
+    # Jede Mittelkarte kommt nur einmal vor: Was der Wolf sieht, hatte niemand am Tisch.
+    verteilung = {"Anna": R.WERWOLF, "Ben": R.DORFBEWOHNER, "Clara": R.DORFBEWOHNER}
+    agenten = alle_stimmen_fuer("Ben", list(verteilung), "Clara")
+    e = engine(verteilung, [R.RAEUBER, R.SEHERIN, R.UNRUHESTIFTERIN], agenten)
+    e.spielen()
+    wissen = next(w for w in e.spieler["Anna"].wissen if w.startswith("Du bist der einzige Werwolf"))
+    assert "Also hatte kein Mitspieler zu Beginn die Karte" in wissen
+
+
+def test_einsamer_wolf_folgert_nichts_bei_mehrfachen_karten() -> None:
+    # Dorfbewohner gibt es mehrfach – daraus folgt nichts über die Mitspieler.
+    verteilung = {"Anna": R.WERWOLF, "Ben": R.DORFBEWOHNER, "Clara": R.SEHERIN}
+    agenten = alle_stimmen_fuer("Ben", list(verteilung), "Clara")
+    e = engine(verteilung, [R.DORFBEWOHNER, R.DORFBEWOHNER, R.WERWOLF], agenten)
+    e.spielen()
+    wissen = next(w for w in e.spieler["Anna"].wissen if w.startswith("Du bist der einzige Werwolf"))
+    assert "kein Mitspieler" not in wissen
