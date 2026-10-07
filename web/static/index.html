@@ -21,7 +21,7 @@
   header h1 { margin: 0; font-size: 1.4rem; }
   header span { color: var(--leise); font-size: .9rem; }
   main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 1fr 360px; }
-  @media (max-width: 800px) { main { grid-template-columns: 1fr; } #seite { order: -1; } }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } #seite { order: -1; } }
   section { background: var(--karte); border: 1px solid var(--rand); border-radius: 10px; padding: 16px; }
   h2 { margin: 0 0 12px; font-size: 1.05rem; }
   label { display: block; font-size: .85rem; color: var(--leise); margin: 8px 0 4px; }
@@ -66,22 +66,64 @@
   .banner.ende { border-color: var(--gut); }
   .leer { color: var(--leise); }
   [hidden] { display: none !important; }
+
+  /* --- Während einer Partie: App-Layout, nur Chat und Seitenleiste scrollen, nie die ganze Seite. ---
+     --hoehe ist die sichtbare Höhe (ohne Bildschirmtastatur), gesetzt per visualViewport im Skript. */
+  .dock { border-top: 1px solid var(--rand); padding-top: 12px; margin-top: 8px; }
+  .dock:empty { display: none; }
+  .dock h2 { margin-bottom: 4px; }
+  .nur-mobil { display: none; }
+  body.laeuft { height: var(--hoehe, 100dvh); display: flex; flex-direction: column; overflow: hidden; }
+  body.laeuft main { flex: 1; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr); }
+  body.laeuft #tisch-bereich { display: flex; flex-direction: column; min-height: 0; }
+  body.laeuft #tisch { flex: 1; min-height: 0; max-height: none; }
+  body.laeuft #zug, body.laeuft #zug-verdeckt { flex-shrink: 0; max-height: 45%; overflow-y: auto; }
+  body.laeuft #seite { min-height: 0; overflow-y: auto; }
+
+  /* Handy und iPad hochkant: Karte, Wissen und Menü liegen in einem Blatt über dem Tisch. */
+  @media (max-width: 900px) {
+    body.laeuft header { padding: 8px 12px; gap: 8px; flex-wrap: nowrap; align-items: center; }
+    body.laeuft header h1 { font-size: 1.1rem; }
+    body.laeuft #kopfzeile { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8rem; }
+    body.laeuft .nur-mobil { display: inline-block; }
+    body.laeuft header button { margin: 0; padding: 6px 12px; white-space: nowrap; }
+    body.laeuft main { padding: 8px; }
+    body.laeuft #tisch-bereich { padding: 10px; }
+    body.laeuft #tisch-bereich > h2 { display: none; }
+    body.laeuft #seite { position: fixed; inset: 0; z-index: 10; background: var(--bg); padding: 12px;
+                         height: var(--hoehe, 100dvh); transform: translateY(100%); visibility: hidden;
+                         transition: transform .25s, visibility .25s; }
+    body.laeuft.blatt-offen #seite { transform: none; visibility: visible; }
+    body.laeuft #blatt-kopf { display: flex; position: sticky; top: -12px; z-index: 1; background: var(--bg);
+                              justify-content: flex-end; padding: 0 0 8px; }
+    body.laeuft #blatt-kopf button { margin: 0; }
+    body.laeuft textarea { min-height: 64px; }
+  }
+  @media (max-width: 900px) and (prefers-reduced-motion: reduce) { body.laeuft #seite { transition: none; } }
 </style>
 </head>
 <body>
 <header>
   <h1>Werwolf-KI</h1>
   <span id="kopfzeile">Spiel gegen LLM-Agenten</span>
+  <button id="blatt-auf" class="nur-mobil" type="button">Deine Karte</button>
 </header>
 <main>
-  <section>
+  <section id="tisch-bereich">
     <h2>Am Tisch</h2>
     <div id="banner"></div>
     <p id="status" class="warten"></p>
-    <div id="tisch"><p class="leer">Starte rechts eine neue Partie.</p></div>
+    <div id="tisch"><p class="leer">Starte eine neue Partie.</p></div>
+    <!-- Dein Zug sitzt direkt unter dem Chat, damit Lesen und Schreiben ohne Scrollen gehen. -->
+    <div id="zug-verdeckt" class="dock" hidden>
+      <p class="warten" style="margin:0">Sieh dir zuerst deine Karte an.</p>
+      <button id="karte-ansehen" type="button">Karte ansehen</button>
+    </div>
+    <div id="zug" class="dock"></div>
   </section>
 
   <div id="seite">
+    <div id="blatt-kopf" hidden><button id="blatt-zu" type="button">Zurück zum Tisch</button></div>
     <section id="du" hidden>
       <h2>Du</h2>
       <div id="rolle-titel" class="leer"></div>
@@ -94,7 +136,6 @@
       <p id="karte-tipp" class="karte-tipp">Deine Karte liegt verdeckt vor dir.</p>
       <div id="rolle" class="rolle" hidden></div>
       <ul id="wissen" class="wissen"></ul>
-      <div id="zug" style="margin-top:16px"></div>
     </section>
 
     <section style="margin-top:16px">
@@ -251,7 +292,39 @@ function verdecktesAusblenden() {
   const verdeckt = Boolean(kartenRolle) && !angesehen;
   $("wissen").hidden = verdeckt;
   $("zug").hidden = verdeckt;
+  $("zug-verdeckt").hidden = !verdeckt;
 }
+
+// --- Handy-Layout ---------------------------------------------------------
+const MOBIL = window.matchMedia("(max-width: 900px)");
+let amEnde = true;  // Chat steht ganz unten → neue Nachrichten scrollen mit
+
+// Sichtbare Höhe ohne Bildschirmtastatur: Der Chat schrumpft, das Eingabefeld bleibt sichtbar.
+function hoeheSetzen() {
+  const hoehe = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.body.style.setProperty("--hoehe", `${Math.round(hoehe)}px`);
+  if (amEnde) $("tisch").scrollTop = $("tisch").scrollHeight;
+}
+(window.visualViewport || window).addEventListener("resize", hoeheSetzen);
+hoeheSetzen();
+
+function blattOeffnen(offen) {
+  document.body.classList.toggle("blatt-offen", offen);
+  $("blatt-kopf").hidden = !(offen && MOBIL.matches);
+}
+$("blatt-auf").addEventListener("click", () => blattOeffnen(true));
+$("blatt-zu").addEventListener("click", () => blattOeffnen(false));
+$("karte-ansehen").addEventListener("click", () => {
+  if (MOBIL.matches) blattOeffnen(true);
+  else $("karte").focus();
+  if (!$("karte").classList.contains("offen")) $("karte").click();
+});
+
+// Wer im Chat nach oben scrollt, um nachzulesen, soll nicht bei jeder Nachricht nach unten springen.
+$("tisch").addEventListener("scroll", () => {
+  const t = $("tisch");
+  amEnde = t.scrollHeight - t.scrollTop - t.clientHeight < 40;
+});
 
 function kartenDatei(rolle) {
   return `karten/${rolle.toLowerCase().replace(/[äöüß]/g, (z) => UMLAUTE[z]).replace(/[^a-z]/g, "")}.jpg`;
@@ -268,6 +341,7 @@ function karteZeigen(rolle) {
   karte.setAttribute("aria-label", "Deine Karte (verdeckt)");
   $("rolle").hidden = true;
   vorne.replaceChildren();
+  $("blatt-auf").textContent = "Deine Karte";
   if (!rolle) { $("karte-tipp").textContent = "Deine Karte liegt verdeckt vor dir."; return; }
   $("karte-tipp").textContent = "Klicke auf die Karte, um sie anzusehen.";
   const bild = Object.assign(document.createElement("img"), { src: kartenDatei(rolle), alt: rolle });
@@ -282,6 +356,7 @@ $("karte").addEventListener("click", () => {
   $("karte").setAttribute("aria-label", offen ? `Deine Karte: ${kartenRolle}` : "Deine Karte (verdeckt)");
   $("karte-tipp").textContent = offen ? "Klicke noch einmal, um sie wieder umzudrehen." : "Klicke auf die Karte, um sie anzusehen.";
   $("rolle").hidden = !offen;
+  $("blatt-auf").textContent = angesehen || offen ? `Karte: ${kartenRolle}` : "Deine Karte";
   if (offen) { angesehen = true; verdecktesAusblenden(); }
 });
 
@@ -319,8 +394,9 @@ $("neu").addEventListener("submit", async (e) => {
   };
   const antwort = await api("/api/neu", daten);
   if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
-  anzahl = 0; letztePhase = null; frageJson = null;
+  anzahl = 0; letztePhase = null; frageJson = null; amEnde = true;
   karteZeigen(null);
+  blattOeffnen(false);
   $("tisch").replaceChildren();
   $("banner").replaceChildren();
   abfragen();
@@ -341,6 +417,7 @@ async function abfragen() {
 
 function zeichnen(z) {
   ich = z.ich;
+  document.body.classList.add("laeuft");
   $("kopfzeile").textContent = `Du spielst als ${z.ich} · Seed ${z.seed}`;
   for (const e of z.ereignisse) ereignisAnzeigen(e);
   anzahl = z.anzahl;
@@ -389,7 +466,7 @@ function ereignisAnzeigen(e) {
   tisch.append(Object.assign(document.createElement("div"), {
     className: `ereignis ${e.art}${eigene ? " ich" : ""}`, textContent: e.text,
   }));
-  tisch.scrollTop = tisch.scrollHeight;
+  if (amEnde) tisch.scrollTop = tisch.scrollHeight;
 }
 
 function zeigeBanner(text, art) {
@@ -434,7 +511,8 @@ function zugAnzeigen(frage) {
       feld.addEventListener("input", pruefen);
       feld.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !senden.disabled) { e.preventDefault(); senden.click(); } });
       bereich.append(feld);
-      setTimeout(() => feld.focus());
+      // Auf dem Handy würde die Tastatur sonst bei jedem Zug den Chat verdecken.
+      if (!MOBIL.matches) setTimeout(() => feld.focus());
     }
     pruefen();
   };
