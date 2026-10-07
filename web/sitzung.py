@@ -46,6 +46,7 @@ def frage_aus_zug(zug: Zug) -> dict[str, Any]:
         })
     vollmond = isinstance(zug.rolle, VollmondRolle)
     return {
+        "wer": zug.ich,  # mehrere Menschen an einem Gerät: Wem wird das Gerät gereicht?
         "phase": zug.phase.value,
         "rolle": zug.rolle.value,
         "rolle_titel": "Deine Karte zu Beginn" if vollmond else "Deine Rolle",
@@ -60,13 +61,12 @@ def karte_titel(regeln: str) -> str:
 
 
 class WebSpieler:
-    """Agent, dessen Züge aus dem Browser kommen."""
+    """Agent, dessen Züge aus dem Browser kommen – für alle menschlichen Plätze zugleich."""
 
     def __init__(self) -> None:
         self._antworten: queue.Queue[Aktion | None] = queue.Queue()
         self.frage: dict[str, Any] | None = None
-        self.geheimwissen: list[str] = []
-        self.rolle: Any = None  # zuletzt gesehene Rolle, für „gewonnen?“ im klassischen Spiel
+        self.geheimwissen: dict[str, list[str]] = {}  # Platz -> zuletzt bekanntes Geheimwissen
         # Laufende Nummer: Zwei gleich aussehende Fragen (z. B. zweimal „Etwas sagen“)
         # muss der Browser trotzdem als neue Frage erkennen.
         self._nummer = 0
@@ -76,8 +76,7 @@ class WebSpieler:
         with self._lock:
             self._nummer += 1
             self.frage = frage_aus_zug(zug) | {"nummer": self._nummer}
-            self.geheimwissen = list(zug.geheimwissen)
-            self.rolle = zug.rolle
+            self.geheimwissen[zug.ich] = list(zug.geheimwissen)
         aktion = self._antworten.get()  # wartet auf den Browser
         if aktion is None:
             raise Abgebrochen()
@@ -99,20 +98,20 @@ class WebSpieler:
 
 @dataclass
 class Sitzung:
-    """Eine laufende Partie mit dir als Spieler."""
+    """Eine laufende Partie mit einem oder mehreren Menschen (an einem Gerät)."""
 
     regeln: str
     spieler: int
     llm: str  # Zahl oder "alle"
-    ich: str
+    menschen: tuple[str, ...]
     szenario: str | None = None
     ordner: Path | None = None  # Standard: logs/ wie bei main.py
     seed: int = field(default_factory=lambda: random.randrange(1_000_000))
     ereignisse: list[dict[str, str]] = field(default_factory=list)
     ende: str | None = None
     fehler: str | None = None
-    gewonnen: bool | None = None  # steht nach dem Spielende fest
-    karte: str | None = None  # deine Karte (Vollmondnacht) bzw. Rolle, steht nach dem Austeilen fest
+    gewonnen: dict[str, bool] = field(default_factory=dict)  # Mensch -> gewonnen?, nach dem Spielende
+    karten: dict[str, str] = field(default_factory=dict)  # Mensch -> Karte bzw. Rolle, ab dem Austeilen
     mensch: WebSpieler = field(default_factory=WebSpieler)
 
     def __post_init__(self) -> None:
@@ -126,13 +125,18 @@ class Sitzung:
                 self.ereignisse.append({"phase": ereignis.phase.value, "art": ereignis.art, "text": ereignis.text})
                 if ereignis.art == "spielende":
                     if "sieger" in ereignis.daten:  # Vollmondnacht nennt die Sieger direkt
-                        self.gewonnen = self.ich in ereignis.daten["sieger"].split(", ")
-                    elif isinstance(self.mensch.rolle, KlassischeRolle):  # klassisch: dein Team
-                        self.gewonnen = self.mensch.rolle.team.value == ereignis.daten.get("gewinner")
+                        sieger = ereignis.daten["sieger"].split(", ")
+                        self.gewonnen = {m: m in sieger for m in self.menschen}
+                    else:  # klassisch: Team der eigenen Rolle
+                        gewinner = ereignis.daten.get("gewinner")
+                        self.gewonnen = {
+                            m: KlassischeRolle(k).team.value == gewinner for m, k in self.karten.items()
+                        }
 
     def _rollen_bekannt(self, rolle_von: dict[str, str]) -> None:
         with self._lock:
-            self.karte = rolle_von[self.ich]  # nur deine – die anderen bleiben geheim
+            # Nur die der Menschen – die übrigen bleiben geheim.
+            self.karten = {m: rolle_von[m] for m in self.menschen}
 
     def starten(self) -> None:
         self._thread = threading.Thread(target=self._spielen, daemon=True)
@@ -145,11 +149,11 @@ class Sitzung:
         from core.konfig import konfig_laden
 
         try:
-            anzahl_llm = self.spieler - 1 if self.llm == "alle" else int(self.llm)
+            anzahl_llm = self.spieler - len(self.menschen) if self.llm == "alle" else int(self.llm)
             client = konfig_laden().client() if anzahl_llm else None
             kurz = partie_spielen(
                 self.seed, self.spieler, anzahl_llm, client, self.dateiname, ausfuehrlich=False,
-                regeln=self.regeln, szenario=self.szenario, mensch=self.ich, mensch_spieler=self.mensch,
+                regeln=self.regeln, szenario=self.szenario, menschen=self.menschen, mensch_spieler=self.mensch,
                 beobachter_extra=self._beobachten, konsole=False, rollen_bekannt=self._rollen_bekannt,
                 **({"ordner": self.ordner} if self.ordner else {}),
             )
@@ -166,16 +170,16 @@ class Sitzung:
         """Alles, was der Browser anzeigen darf. `seit`: nur Ereignisse ab dieser Nummer."""
         with self._lock:
             return {
-                "ich": self.ich,
+                "menschen": list(self.menschen),
                 "seed": self.seed,
                 "ereignisse": self.ereignisse[seit:],
                 "anzahl": len(self.ereignisse),
                 "frage": self.mensch.frage,
-                "geheimwissen": self.mensch.geheimwissen,
-                "karte": self.karte,
+                "geheimwissen": dict(self.mensch.geheimwissen),
+                "karten": dict(self.karten),
                 "karte_titel": karte_titel(self.regeln),
                 "ende": self.ende,
-                "gewonnen": self.gewonnen,
+                "gewonnen": dict(self.gewonnen),
                 "fehler": self.fehler,
                 "protokoll": f"logs/{self.dateiname}.txt" if self.ende else None,
             }

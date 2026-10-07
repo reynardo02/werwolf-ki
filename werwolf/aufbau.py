@@ -5,7 +5,7 @@ main.py lädt die .env und das openai-SDK, beides gibt es im Browser nicht.
 """
 
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -71,9 +71,13 @@ class Besetzung:
 
 def agenten_bauen(
     seed: int, rng: random.Random, namen: list[str], anzahl_llm: int, client: LLMClient | None,
-    regeln: str, mensch: str | None = None, mensch_spieler: Agent | None = None,
+    regeln: str, menschen: Collection[str] = (), mensch_spieler: Agent | None = None,
 ) -> Besetzung:
-    """Verteilt die Plätze: du (falls `mensch`), dann LLM-Spieler, der Rest MockAgenten."""
+    """Verteilt die Plätze: Menschen (`menschen`), dann LLM-Spieler, der Rest MockAgenten.
+
+    Alle menschlichen Plätze teilen sich ein Agent-Objekt (`mensch_spieler`): Es sieht an
+    `zug.ich`, wer gerade gefragt ist – so können mehrere Menschen an einem Gerät spielen.
+    """
     # Jeder LLM-Spieler bekommt eine andere, zufällige Persönlichkeit.
     # Die Rollen werden zufällig verteilt, daher ist egal, welche Namen das LLM bekommt.
     persoenlichkeiten = rng.sample(persoenlichkeiten_laden(), anzahl_llm)
@@ -81,8 +85,10 @@ def agenten_bauen(
     b = Besetzung()
     llm_vergeben = 0
     for name in namen:
-        if name == mensch:
-            b.agenten[name] = mensch_spieler or MenschSpieler()
+        if name in menschen:
+            if mensch_spieler is None:
+                mensch_spieler = MenschSpieler()
+            b.agenten[name] = mensch_spieler
             b.persoenlichkeit_von[name] = None
             b.typ_von[name] = "mensch"
         elif client and llm_vergeben < anzahl_llm:

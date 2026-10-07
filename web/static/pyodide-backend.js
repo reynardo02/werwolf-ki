@@ -72,16 +72,18 @@ export async function api(pfad, daten) {
 }
 
 function zustand(seit) {
-  const z = partie.zustand || { ereignisse: [], geheimwissen: [] };
+  const z = partie.zustand || { ereignisse: [], geheimwissen: {}, karten: {}, gewonnen: {} };
   const downloads = z.ende ? [
     { name: `werwolf_${partie.seed}.txt`, text: z.protokoll },
     { name: `werwolf_${partie.seed}.jsonl`, text: z.log },
   ] : [];
   return {
-    laeuft: true, ich: partie.einstellungen.ich, seed: partie.seed,
+    laeuft: true, seed: partie.seed,
+    // Vor dem ersten Schritt kennt nur das Formular die Menschen („ich“: alte gespeicherte Partien).
+    menschen: z.menschen || partie.einstellungen.menschen || [partie.einstellungen.ich],
     ereignisse: z.ereignisse.slice(seit), anzahl: z.ereignisse.length,
-    frage: z.frage || null, geheimwissen: z.geheimwissen, karte: z.karte || null, karte_titel: z.karte_titel || null,
-    ende: z.ende || null, gewonnen: z.gewonnen ?? null,
+    frage: z.frage || null, geheimwissen: z.geheimwissen, karten: z.karten || {}, karte_titel: z.karte_titel || null,
+    ende: z.ende || null, gewonnen: z.gewonnen || {},
     fehler: partie.fehler, wiederholbar: Boolean(partie.fehler), status: partie.status, downloads,
   };
 }

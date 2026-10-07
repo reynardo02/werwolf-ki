@@ -7,7 +7,7 @@ Zwei Spielvarianten:
 
 import argparse
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -48,7 +48,7 @@ def partie_spielen(
     ordner: Path = LOGS,
     regeln: str = KLASSISCH,
     szenario: str | None = None,
-    mensch: str | None = None,
+    menschen: Sequence[str] = (),
     mensch_spieler: Agent | None = None,
     beobachter_extra: Callable[[Ereignis], None] | None = None,
     konsole: bool = True,
@@ -56,7 +56,7 @@ def partie_spielen(
 ) -> str:
     """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück.
 
-    `mensch`: Name des Platzes, an dem du selbst per Tastatur spielst. Dann zeigt die
+    `menschen`: Namen der Plätze, an denen Menschen spielen (Konsole: einer, du). Dann zeigt die
     Konsole nur, was öffentlich am Tisch passiert – Rollen und Geheimnisse stehen erst
     hinterher im Protokoll.
     `beobachter_extra` bekommt zusätzlich jedes Ereignis (z. B. für die Web-Oberfläche),
@@ -72,16 +72,16 @@ def partie_spielen(
     if regeln == VOLLMONDNACHT and szenario is None:
         szenario = szenario_namen(anzahl_spieler)[0]
 
-    besetzung = agenten_bauen(seed, rng, namen, anzahl_llm, client, regeln, mensch, mensch_spieler)
+    besetzung = agenten_bauen(seed, rng, namen, anzahl_llm, client, regeln, menschen, mensch_spieler)
     agenten, typ_von = besetzung.agenten, besetzung.typ_von
 
     # Spielst du selbst mit, darf die Konsole nichts Geheimes zeigen.
-    protokoll = Protokoll(ausgabe=print if ausfuehrlich and not mensch and konsole else None)
+    protokoll = Protokoll(ausgabe=print if ausfuehrlich and not menschen and konsole else None)
     # Die Engine hat einen Beobachter, wir verteilen an Protokoll und Log.
     beobachter: list[Callable[[Ereignis], None]] = [protokoll]
     if beobachter_extra:
         beobachter.append(beobachter_extra)
-    if mensch and konsole:
+    if menschen and konsole:
         tisch = Protokoll(ausgabe=print)
         beobachter.append(lambda e: tisch(e) if e.oeffentlich else None)
 
@@ -99,9 +99,9 @@ def partie_spielen(
 
     titel, zeilen = protokoll_kopf(kopf)
     protokoll.kopf(titel, zeilen)
-    if mensch and konsole:
-        andere = ", ".join(f"{n} ({'LLM' if typ_von[n] == 'llm' else 'MockAgent'})" for n in namen if n != mensch)
-        print(f"{titel}\nDu spielst als {mensch}. Am Tisch: {andere}.")
+    if menschen and konsole:
+        andere = ", ".join(f"{n} ({'LLM' if typ_von[n] == 'llm' else 'MockAgent'})" for n in namen if n not in menschen)
+        print(f"{titel}\nDu spielst als {', '.join(menschen)}. Am Tisch: {andere}.")
 
     try:
         kurz, zeilen, daten = ergebnis_zusammenfassen(engine.spielen())
@@ -206,7 +206,7 @@ def main() -> None:
         try:
             kurz = partie_spielen(
                 seed, args.spieler, anzahl_llm, client, dateiname, ausfuehrlich,
-                regeln=args.regeln, szenario=args.szenario, mensch=args.mensch,
+                regeln=args.regeln, szenario=args.szenario, menschen=[args.mensch] if args.mensch else [],
             )
         except (KontingentErschoepft, KeyboardInterrupt) as fehler:
             if isinstance(fehler, KontingentErschoepft):

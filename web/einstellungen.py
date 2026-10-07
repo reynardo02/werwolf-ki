@@ -7,6 +7,10 @@ from werwolf.aufbau import NAMEN, SPIELERZAHL, VOLLMONDNACHT
 from werwolf.vollmondnacht.rollen import szenario_namen
 
 
+# Mehr Menschen an einem Gerät werden unübersichtlich (jeder Zug braucht eine Übergabe).
+MAX_MENSCHEN = 5
+
+
 class Fehler(Exception):
     """Ungültige Einstellung: wird dem Browser als Meldung angezeigt."""
 
@@ -15,13 +19,13 @@ class Fehler(Exception):
 class Einstellungen:
     regeln: str
     spieler: int
-    llm: str  # Zahl oder "alle" (alle anderen Plätze)
-    ich: str
+    llm: str  # Zahl oder "alle" (alle Plätze ohne Mensch)
+    menschen: tuple[str, ...]  # Plätze, an denen Menschen spielen (an einem Gerät)
     szenario: str | None
 
     @property
     def anzahl_llm(self) -> int:
-        return self.spieler - 1 if self.llm == "alle" else int(self.llm)
+        return self.spieler - len(self.menschen) if self.llm == "alle" else int(self.llm)
 
 
 def einstellungen_pruefen(daten: dict[str, Any]) -> Einstellungen:
@@ -35,16 +39,26 @@ def einstellungen_pruefen(daten: dict[str, Any]) -> Einstellungen:
     minimum, maximum = SPIELERZAHL[regeln]
     if not minimum <= spieler <= maximum:
         raise Fehler(f"Bei {regeln} sind {minimum} bis {maximum} Spieler möglich")
+    # „ich“ ist das alte Format mit genau einem Menschen (gespeicherte Partien im Browser).
+    menschen = daten.get("menschen") or [daten.get("ich") or NAMEN[0]]
+    if not isinstance(menschen, list) or not all(isinstance(m, str) for m in menschen):
+        raise Fehler("Menschen: Liste von Platz-Namen erwartet")
+    falsch = [m for m in menschen if m not in NAMEN[:spieler]]
+    if falsch:
+        raise Fehler(f"Platz '{falsch[0]}' gibt es bei {spieler} Spielern nicht")
+    if len(set(menschen)) != len(menschen):
+        raise Fehler("Jeder Platz kann nur einmal von einem Menschen besetzt werden")
+    if len(menschen) > min(MAX_MENSCHEN, spieler):
+        raise Fehler(f"Höchstens {min(MAX_MENSCHEN, spieler)} Menschen bei {spieler} Spielern")
+    frei = spieler - len(menschen)
     llm = str(daten.get("llm", "alle"))
-    if llm != "alle" and not (llm.isdigit() and int(llm) <= spieler - 1):
-        raise Fehler(f"LLM-Spieler: 'alle' oder 0 bis {spieler - 1}")
+    if llm != "alle" and not (llm.isdigit() and int(llm) <= frei):
+        raise Fehler(f"LLM-Spieler: 'alle' oder 0 bis {frei}")
     szenario = daten.get("szenario") or None
     if szenario is not None and (regeln != VOLLMONDNACHT or szenario not in szenario_namen(spieler)):
         raise Fehler(f"Szenario '{szenario}' passt nicht zu {regeln} mit {spieler} Spielern")
-    ich = daten.get("ich") or NAMEN[0]
-    if ich not in NAMEN[:spieler]:
-        raise Fehler(f"Platz '{ich}' gibt es bei {spieler} Spielern nicht")
-    return Einstellungen(regeln, spieler, llm, ich, szenario)
+    # In Sitzreihenfolge: So kommen die Übergaben in der Reihenfolge, in der die Engine fragt.
+    return Einstellungen(regeln, spieler, llm, tuple(n for n in NAMEN[:spieler] if n in menschen), szenario)
 
 
 def optionen(spieler: int) -> dict[str, list[str]]:

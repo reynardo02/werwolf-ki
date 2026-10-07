@@ -54,7 +54,7 @@ def test_partie_mit_llm_durch_wiederholen(regeln: str, spieler: int) -> None:
     einstellungen = {"regeln": regeln, "spieler": spieler, "llm": "alle", "ich": "Clara"}
     z, mensch, llm, aufrufe = durchspielen(einstellungen)
     assert mensch and llm and aufrufe == len(mensch) + len(llm) + 1
-    assert z["gewonnen"] in (True, False)
+    assert z["gewonnen"]["Clara"] in (True, False)
     assert "[geheim]" in z["protokoll"]
     assert all(e["art"] not in ("nacht_aktion", "begruendung", "notiz") for e in z["ereignisse"])
     # Wiederholen ist deterministisch: gleiche Antworten, gleicher Verlauf.
@@ -140,4 +140,31 @@ def test_deine_karte_steht_von_anfang_an_fest(regeln: str, titel: str) -> None:
     einstellungen = {"regeln": regeln, "spieler": 5, "llm": "alle", "ich": "Emil"}
     z = schritt(einstellungen, 4, [], [], modell="test-modell")
     assert z["llm_anfrage"] is not None and z["frage"] is None
-    assert z["karte"] and z["karte_titel"] == titel
+    assert list(z["karten"]) == ["Emil"] and z["karte_titel"] == titel
+
+
+@pytest.mark.parametrize("regeln", ["vollmondnacht", "klassisch"])
+def test_mehrere_menschen_an_einem_geraet(regeln: str) -> None:
+    einstellungen = {"regeln": regeln, "spieler": 6, "llm": "alle", "menschen": ["Dario", "Anna", "Emil"]}
+    mensch, llm, gefragt = [], [], []
+    for _ in range(500):
+        z = schritt(einstellungen, 7, mensch, llm, modell="test-modell")
+        # Nur Karten und Wissen der Menschen, nie das der LLMs.
+        assert set(z["karten"]) == {"Anna", "Dario", "Emil"}
+        assert set(z["geheimwissen"]) <= {"Anna", "Dario", "Emil"}
+        if z["ende"]:
+            break
+        if z["llm_anfrage"]:
+            llm.append(llm_antwort(z["llm_anfrage"]))
+        else:
+            gefragt.append(z["frage"]["wer"])
+            mensch.append(mensch_antwort(z["frage"]))
+    assert z["ende"] and z["menschen"] == ["Anna", "Dario", "Emil"]  # in Sitzreihenfolge
+    assert set(gefragt) == {"Anna", "Dario", "Emil"}  # jeder kam mindestens einmal dran
+    assert set(z["gewonnen"]) == {"Anna", "Dario", "Emil"}
+    kopf = json.loads(z["log"].splitlines()[0])
+    assert [s["name"] for s in kopf["spieler"] if s["typ"] == "mensch"] == ["Anna", "Dario", "Emil"]
+    assert sum(s["typ"] == "llm" for s in kopf["spieler"]) == 3
+    if regeln == "vollmondnacht":
+        partie = partie_aus_log([json.loads(zeile) for zeile in z["log"].splitlines()])
+        assert partie.gruppe.endswith("mit 3 Menschen") and partie.mensch is None  # nicht in deiner Bilanz

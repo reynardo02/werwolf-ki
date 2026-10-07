@@ -15,6 +15,13 @@ den Browser (ca. 13 MB), danach geht es sofort los.
   12 Rollen und die Szenarien aus der Anleitung.
 - **Klassisch:** mehrere Runden aus Nacht und Tag, mit Werwölfen, Seherin und Dorfbewohnern.
 
+## Zu mehreren an einem Gerät
+
+Bis zu 5 Menschen können an einem Gerät (z. B. einem iPad) mitspielen: Unter „Menschen an diesem
+Gerät“ die Plätze ankreuzen, die übrigen übernehmen LLMs oder Zufallsspieler. Vor jedem Zug
+erscheint „Gib das Gerät an …“ – erst nach „Ich bin …“ sieht die Person ihre Karte, ihr Wissen
+und ihren Zug. Danach wird alles wieder verdeckt.
+
 ## Mit KI-Mitspielern spielen
 
 Für LLM-Mitspieler brauchst du einen eigenen API-Key eines OpenAI-kompatiblen Anbieters,

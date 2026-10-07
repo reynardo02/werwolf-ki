@@ -54,12 +54,18 @@
                   font: 700 .85rem/1.2 Georgia, serif; text-transform: uppercase; letter-spacing: 0; padding: 8px;
                   hyphens: auto; overflow-wrap: break-word; }
   /* Einstieg: Bevor der Chat erscheint, liegt deine Karte groß in der Mitte. */
-  #einstieg { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  /* Vorhang: Mehrere Menschen an einem Gerät – erst wenn die richtige Person „Ich bin …“ tippt,
+     erscheint Geheimes. Solange sind Chat, Zug und Karte verdeckt. */
+  #einstieg, #vorhang { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
   #einstieg .karte { width: min(240px, 60vw, calc(var(--hoehe, 100dvh) * .4)); margin-bottom: 12px; }
-  #einstieg .karte-tipp { max-width: 32em; }
-  body.einstieg #einstieg { display: flex; }
-  body.einstieg #tisch, body.einstieg #zug, body.einstieg #status,
-  body.einstieg #tisch-bereich > h2, body.einstieg #du { display: none; }
+  #einstieg .karte-tipp, #vorhang p { max-width: 32em; }
+  #vorhang h2 { font-size: 1.4rem; }
+  body.einstieg #einstieg, body.vorhang #vorhang { display: flex; }
+  body.einstieg #tisch, body.einstieg #zug, body.einstieg #status, body.einstieg #tisch-bereich > h2, body.einstieg #du,
+  body.vorhang #tisch, body.vorhang #zug, body.vorhang #status, body.vorhang #tisch-bereich > h2, body.vorhang #du { display: none; }
+  .plaetze { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .plaetze label { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--text); font-size: .95rem; }
+  .plaetze input { width: auto; }
   .karte-tipp { text-align: center; font-size: .85rem; color: var(--leise); margin: 0 0 8px; }
   @media (prefers-reduced-motion: reduce) { .karte-innen { transition: none; } }
   .wissen { margin: 8px 0 0; padding-left: 18px; }
@@ -84,7 +90,7 @@
   body.laeuft main { flex: 1; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr); }
   body.laeuft #tisch-bereich { display: flex; flex-direction: column; min-height: 0; }
   body.laeuft #tisch { flex: 1; min-height: 0; max-height: none; }
-  body.laeuft #einstieg { flex: 1; min-height: 0; overflow-y: auto; }
+  body.laeuft #einstieg, body.laeuft #vorhang { flex: 1; min-height: 0; overflow-y: auto; }
   body.laeuft #zug { flex-shrink: 0; max-height: 45%; overflow-y: auto; }
   body.laeuft #seite { min-height: 0; overflow-y: auto; }
 
@@ -134,6 +140,12 @@
       <p id="einstieg-tipp" class="karte-tipp">Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.</p>
       <button id="zum-tisch" type="button" hidden>Zum Tisch</button>
     </div>
+    <!-- Übergabe bei mehreren Menschen an einem Gerät. -->
+    <div id="vorhang">
+      <h2 id="vorhang-titel"></h2>
+      <p id="vorhang-text"></p>
+      <button id="vorhang-knopf" type="button"></button>
+    </div>
     <!-- Dein Zug sitzt direkt unter dem Chat, damit Lesen und Schreiben ohne Scrollen gehen. -->
     <div id="zug" class="dock"></div>
   </section>
@@ -141,7 +153,7 @@
   <div id="seite">
     <div id="blatt-kopf" hidden><button id="blatt-zu" type="button">Zurück zum Tisch</button></div>
     <section id="du" hidden>
-      <h2>Du</h2>
+      <h2 id="du-titel">Du</h2>
       <div id="rolle-titel" class="leer"></div>
       <button id="karte" class="karte" type="button" disabled aria-label="Deine Karte (verdeckt)">
         <div class="karte-innen">
@@ -172,8 +184,8 @@
             <select id="llm"></select>
           </div>
         </div>
-        <label for="ich">Dein Platz</label>
-        <select id="ich"></select>
+        <label>Menschen an diesem Gerät <span id="menschen-zahl"></span></label>
+        <div id="plaetze" class="plaetze"></div>
         <div id="szenario-feld">
           <label for="szenario">Szenario</label>
           <select id="szenario"></select>
@@ -218,7 +230,7 @@
 
 <script>
 // Stand im Browser: wie viele Ereignisse wir schon zeigen und welche Frage gerade offen ist.
-let anzahl = 0, letztePhase = null, frageJson = null, ich = null, timer = null;
+let anzahl = 0, letztePhase = null, timer = null, spielEnde = false;
 const $ = (id) => document.getElementById(id);
 
 // --- Server oder Browser? -------------------------------------------------
@@ -296,29 +308,94 @@ for (const id of ["basis", "modell"]) {
   $(id).addEventListener("input", () => { $("anbieter").value = "eigene"; });
 }
 
-// --- Deine Karte ----------------------------------------------------------
+// --- Menschen am Gerät ----------------------------------------------------
+// Eine oder mehrere Personen spielen an diesem Gerät. Geheimes (Karte, Wissen, Zug) sieht immer
+// nur, wer gerade „Ich bin …“ getippt hat (`aktiv`). Bei nur einem Menschen ist das immer er.
 // Bilddateien heißen wie die Rolle, klein und ohne Umlaute: „Räuber“ → karten/raeuber.jpg.
 const UMLAUTE = { "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss" };
-let kartenRolle = null, angesehen = false, seed = null;
+let menschen = [], karten = {}, wissenVon = {}, kartenTitel = "Deine Karte zu Beginn";
+let aktiv = null, frage = null, seed = null, gesehen = new Set();
+let einstiegFuer = null, duPerson = null, duWissen = null, zugSchluessel = null;
+const mehrere = () => menschen.length > 1;
 
-// Geheimwissen verrät die Karte – es erscheint erst, wenn du sie einmal angesehen hast.
-function verdecktesAusblenden() {
-  $("wissen").hidden = Boolean(kartenRolle) && !angesehen;
+// Wer seine Karte schon angesehen hat – pro Partie gemerkt, damit Neuladen nicht wieder bei den Karten anfängt.
+const GESEHEN = () => `werwolf-gesehen-${seed}`;
+function gesehenLaden() {
+  try { gesehen = new Set(JSON.parse(sessionStorage.getItem(GESEHEN()) || "[]")); } catch { gesehen = new Set(); }
+}
+function gesehenMerken() {
+  try { sessionStorage.setItem(GESEHEN(), JSON.stringify([...gesehen])); } catch { /* dann eben nicht merken */ }
 }
 
-// Einstieg: Zu Beginn jeder Partie siehst du nur deine Karte, erst danach den Tisch.
-// Pro Partie gemerkt, damit Neuladen nicht wieder bei der Karte anfängt.
-const AM_TISCH = () => `werwolf-am-tisch-${seed}`;
-function amTischGemerkt() {
-  try { return sessionStorage.getItem(AM_TISCH()) === "1"; } catch { return false; }
+// Entscheidet, was zu sehen ist: Vorhang (Gerät weitergeben), Karte ansehen oder der Tisch.
+function ansicht() {
+  const offen = menschen.find((m) => !gesehen.has(m) && karten[m]);  // muss die Karte noch ansehen
+  const dran = offen || frage?.wer || null;  // wem das Gerät gerade gehört
+  const vorhang = mehrere() && dran !== null && aktiv !== dran;
+  const warEinstieg = document.body.classList.contains("einstieg");
+  document.body.classList.toggle("vorhang", vorhang);
+  document.body.classList.toggle("einstieg", !vorhang && Boolean(offen));
+  if (vorhang) vorhangZeigen(dran, Boolean(offen));
+  if (!vorhang && offen) einstiegZeigen(offen); else einstiegFuer = null;
+  duZeigen(vorhang || offen ? null : aktiv);
+  zugZeigen(!vorhang && !offen && frage && (!mehrere() || frage.wer === aktiv) ? frage : null);
+  $("blatt-auf").textContent = aktiv && !offen && karten[aktiv] ? `Karte: ${karten[aktiv]}` : mehrere() ? "Menü" : "Deine Karte";
+  if (warEinstieg && !offen) {  // gerade an den Tisch gekommen
+    amEnde = true;
+    $("tisch").scrollTop = $("tisch").scrollHeight;
+    if (!MOBIL.matches) $("zug").querySelector("textarea")?.focus();
+  }
 }
-function einstiegBeenden() {
-  try { sessionStorage.setItem(AM_TISCH(), "1"); } catch { /* dann eben nicht merken */ }
-  document.body.classList.remove("einstieg");
-  amEnde = true;
-  $("tisch").scrollTop = $("tisch").scrollHeight;
-  if (!MOBIL.matches) $("zug").querySelector("textarea")?.focus();
+
+function vorhangZeigen(name, nurKarte) {
+  $("vorhang-titel").textContent = nurKarte ? `${name}, sieh dir deine Karte an` : `${name} ist dran`;
+  $("vorhang-text").textContent = `Gib das Gerät an ${name}. Alle anderen schauen bitte weg.`;
+  $("vorhang-knopf").textContent = `Ich bin ${name}`;
+  $("vorhang-knopf").dataset.name = name;
 }
+// Nach deinem Zug: Bei mehreren Menschen verschwindet alles Geheime, das Gerät geht weiter.
+function zugErledigt() {
+  frage = null;
+  if (mehrere()) aktiv = null;
+  ansicht();
+}
+
+$("vorhang-knopf").addEventListener("click", () => {
+  aktiv = $("vorhang-knopf").dataset.name;
+  ansicht();
+});
+
+// --- Karte ansehen (zu Beginn, einmal pro Mensch) ---
+function einstiegZeigen(name) {
+  if (einstiegFuer === name) return;  // nicht bei jeder Abfrage zurückdrehen
+  einstiegFuer = name;
+  const karte = $("einstieg-karte");
+  karte.classList.remove("offen");
+  karte.setAttribute("aria-label", "Deine Karte (verdeckt)");
+  vorderseite($("einstieg-vorne"), karten[name]);
+  $("einstieg-titel").textContent = mehrere() ? `${name}: ${kartenTitel}` : kartenTitel;
+  $("einstieg-tipp").textContent = "Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.";
+  const weitere = menschen.some((m) => m !== name && !gesehen.has(m));
+  $("zum-tisch").textContent = weitere ? "Karte verdecken und weitergeben" : "Zum Tisch";
+  $("zum-tisch").hidden = true;
+}
+
+$("einstieg-karte").addEventListener("click", () => {
+  const karte = $("einstieg-karte"), offen = karte.classList.toggle("offen"), rolle = karten[einstiegFuer];
+  karte.setAttribute("aria-label", offen ? `Deine Karte: ${rolle}` : "Deine Karte (verdeckt)");
+  $("einstieg-tipp").textContent = offen
+    ? `Du bist ${rolle}. Merk sie dir – am Tisch findest du sie jederzeit wieder.`
+    : "Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.";
+  if (offen) $("zum-tisch").hidden = false;
+});
+$("zum-tisch").addEventListener("click", () => {
+  gesehen.add(einstiegFuer);
+  gesehenMerken();
+  // Gerät geht weiter: nichts Geheimes stehen lassen – außer der Letzte ist gleich selbst dran.
+  const weitere = menschen.some((m) => !gesehen.has(m));
+  if (mehrere() && (weitere || frage?.wer !== einstiegFuer)) aktiv = null;
+  ansicht();
+});
 
 // --- Handy-Layout ---------------------------------------------------------
 const MOBIL = window.matchMedia("(max-width: 900px)");
@@ -360,49 +437,33 @@ function vorderseite(vorne, rolle) {
   vorne.append(bild);
 }
 
-function karteZeigen(rolle) {
-  if (rolle === kartenRolle) return;
-  kartenRolle = rolle;
-  // Schon am Tisch gewesen (Seite neu geladen)? Dann gilt die Karte als angesehen.
-  angesehen = Boolean(rolle) && amTischGemerkt();
-  document.body.classList.toggle("einstieg", Boolean(rolle) && !angesehen);
-  verdecktesAusblenden();
-  for (const id of ["karte", "einstieg-karte"]) {
-    $(id).classList.remove("offen");
-    $(id).setAttribute("aria-label", "Deine Karte (verdeckt)");
+// --- Seitenleiste: Karte und Wissen dessen, der gerade das Gerät hat ---
+function duZeigen(name) {
+  const rolle = name ? karten[name] : null, wissen = name ? wissenVon[name] || [] : [];
+  $("du").hidden = !rolle;
+  if (JSON.stringify(wissen) !== duWissen) {
+    duWissen = JSON.stringify(wissen);
+    $("wissen").replaceChildren(...wissen.map((w) => Object.assign(document.createElement("li"), { textContent: w })));
   }
-  $("karte").disabled = !rolle;
-  vorderseite($("karte-vorne"), rolle);
-  vorderseite($("einstieg-vorne"), rolle);
+  if (`${name}|${rolle}` === duPerson) return;  // gleiche Person: Karte nicht bei jeder Abfrage umdrehen
+  duPerson = `${name}|${rolle}`;
+  $("du-titel").textContent = mehrere() && name ? name : "Du";
+  $("rolle-titel").textContent = kartenTitel;
+  $("rolle").textContent = rolle || "";
   $("rolle").hidden = true;
-  $("zum-tisch").hidden = true;
-  $("einstieg-tipp").textContent = "Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.";
-  $("blatt-auf").textContent = angesehen ? `Karte: ${rolle}` : "Deine Karte";
+  const karte = $("karte");
+  karte.classList.remove("offen");
+  karte.disabled = !rolle;
+  karte.setAttribute("aria-label", "Deine Karte (verdeckt)");
+  vorderseite($("karte-vorne"), rolle);
   $("karte-tipp").textContent = rolle ? "Klicke auf die Karte, um sie anzusehen." : "Deine Karte liegt verdeckt vor dir.";
 }
 
-$("einstieg-karte").addEventListener("click", () => {
-  const karte = $("einstieg-karte"), offen = karte.classList.toggle("offen");
-  karte.setAttribute("aria-label", offen ? `Deine Karte: ${kartenRolle}` : "Deine Karte (verdeckt)");
-  $("einstieg-tipp").textContent = offen
-    ? `Du bist ${kartenRolle}. Merk sie dir – am Tisch findest du sie jederzeit wieder.`
-    : "Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.";
-  if (offen) {
-    angesehen = true;
-    $("zum-tisch").hidden = false;
-    $("blatt-auf").textContent = `Karte: ${kartenRolle}`;
-    verdecktesAusblenden();
-  }
-});
-$("zum-tisch").addEventListener("click", einstiegBeenden);
-
 $("karte").addEventListener("click", () => {
   const offen = $("karte").classList.toggle("offen");
-  $("karte").setAttribute("aria-label", offen ? `Deine Karte: ${kartenRolle}` : "Deine Karte (verdeckt)");
+  $("karte").setAttribute("aria-label", offen ? `Deine Karte: ${$("rolle").textContent}` : "Deine Karte (verdeckt)");
   $("karte-tipp").textContent = offen ? "Klicke noch einmal, um sie wieder umzudrehen." : "Klicke auf die Karte, um sie anzusehen.";
   $("rolle").hidden = !offen;
-  $("blatt-auf").textContent = angesehen || offen ? `Karte: ${kartenRolle}` : "Deine Karte";
-  if (offen) { angesehen = true; verdecktesAusblenden(); }
 });
 
 // --- Formular -------------------------------------------------------------
@@ -415,12 +476,39 @@ async function optionenLaden() {
   feld.value = Math.min(max, Math.max(min, Number(feld.value) || 7));
   const n = Number(feld.value);
   const antwort = (await api(`/api/optionen?spieler=${n}`)).daten;
-  fuellen($("ich"), antwort.namen);
+  plaetzeFuellen(antwort.namen);
   fuellen($("szenario"), antwort.szenarien);
-  fuellen($("llm"), ["alle", ...Array.from({ length: n }, (_, i) => String(i))],
-          (w) => (w === "alle" ? "alle anderen" : w === "0" ? "keine (nur MockAgenten)" : w));
   $("szenario-feld").hidden = regeln !== "vollmondnacht";
 }
+
+// Welche Plätze Menschen an diesem Gerät übernehmen (mindestens einer, höchstens 5).
+const MAX_MENSCHEN = 5;
+function gewaehltePlaetze() {
+  return [...$("plaetze").querySelectorAll("input:checked")].map((feld) => feld.value);
+}
+function plaetzeFuellen(namen) {
+  const behalten = gewaehltePlaetze().filter((n) => namen.includes(n));
+  const gewaehlt = behalten.length ? behalten : [namen[0]];
+  $("plaetze").replaceChildren(...namen.map((name) => {
+    const feld = Object.assign(document.createElement("input"), { type: "checkbox", value: name, checked: gewaehlt.includes(name) });
+    const label = document.createElement("label");
+    label.append(feld, name);
+    return label;
+  }));
+  plaetzePruefen();
+}
+function plaetzePruefen() {
+  const zahl = gewaehltePlaetze().length;
+  for (const feld of $("plaetze").querySelectorAll("input")) {
+    // Den letzten Menschen nicht abwählen lassen, und nicht mehr als 5 auswählen.
+    feld.disabled = feld.checked ? zahl === 1 : zahl >= MAX_MENSCHEN;
+  }
+  $("menschen-zahl").textContent = `(${zahl})`;
+  const frei = Number($("spieler").value) - zahl;
+  fuellen($("llm"), ["alle", ...Array.from({ length: frei + 1 }, (_, i) => String(i))],
+          (w) => (w === "alle" ? "alle anderen" : w === "0" ? "keine (nur MockAgenten)" : w));
+}
+$("plaetze").addEventListener("change", plaetzePruefen);
 
 function fuellen(select, werte, text = (w) => w) {
   const alt = select.value;
@@ -435,12 +523,15 @@ $("neu").addEventListener("submit", async (e) => {
   e.preventDefault();
   const daten = {
     regeln: $("regeln").value, spieler: Number($("spieler").value), llm: $("llm").value,
-    ich: $("ich").value, szenario: $("regeln").value === "vollmondnacht" ? $("szenario").value : null,
+    menschen: gewaehltePlaetze(), szenario: $("regeln").value === "vollmondnacht" ? $("szenario").value : null,
   };
   const antwort = await api("/api/neu", daten);
   if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
-  anzahl = 0; letztePhase = null; frageJson = null; amEnde = true;
-  karteZeigen(null);
+  anzahl = 0; letztePhase = null; amEnde = true; spielEnde = false;
+  menschen = []; karten = {}; wissenVon = {}; aktiv = null; frage = null; seed = null; gesehen = new Set();
+  einstiegFuer = null; duPerson = null; duWissen = null; zugSchluessel = null;
+  document.body.classList.remove("einstieg", "vorhang");
+  $("du").hidden = true;
   blattOeffnen(false);
   $("tisch").replaceChildren();
   $("banner").replaceChildren();
@@ -461,27 +552,21 @@ async function abfragen() {
 }
 
 function zeichnen(z) {
-  ich = z.ich;
-  seed = z.seed;
+  if (z.seed !== seed) { seed = z.seed; gesehenLaden(); }
+  menschen = z.menschen || [];
+  // Karten stehen schon beim Austeilen fest, vor dem ersten Zug.
+  karten = z.karten || {};
+  wissenVon = z.geheimwissen || {};
+  kartenTitel = z.karte_titel || kartenTitel;
+  frage = z.frage || null;
+  spielEnde = Boolean(z.ende);
+  if (!mehrere()) aktiv = menschen[0] || null;  // allein: immer du
   document.body.classList.add("laeuft");
-  $("kopfzeile").textContent = `Du spielst als ${z.ich} · Seed ${z.seed}`;
+  const wer = mehrere() ? `Menschen: ${menschen.join(", ")}` : `Du spielst als ${menschen[0]}`;
+  $("kopfzeile").textContent = `${wer} · Seed ${z.seed}`;
   for (const e of z.ereignisse) ereignisAnzeigen(e);
   anzahl = z.anzahl;
-
-  $("du").hidden = false;
-  // Deine Karte steht schon beim Austeilen fest, vor dem ersten Zug.
-  const karte = z.karte || z.frage?.rolle, titel = z.karte_titel || z.frage?.rolle_titel;
-  if (karte) {
-    $("rolle-titel").textContent = titel;
-    $("einstieg-titel").textContent = titel;
-    $("rolle").textContent = karte;
-    karteZeigen(karte);
-  }
-  $("wissen").replaceChildren(...z.geheimwissen.map((w) => Object.assign(document.createElement("li"), { textContent: w })));
-
-  // Die Frage nur neu zeichnen, wenn sie sich ändert – sonst ginge dein Text verloren.
-  const neu = JSON.stringify(z.frage);
-  if (neu !== frageJson) { frageJson = neu; zugAnzeigen(z.frage); }
+  ansicht();
 
   if (z.fehler) {
     zeigeBanner(`Fehler: ${z.fehler}`, "fehler");
@@ -491,7 +576,10 @@ function zeichnen(z) {
       $("banner").append(knopf);
     }
   } else if (z.ende) {
-    const du = z.gewonnen === true ? "Du hast gewonnen! " : z.gewonnen === false ? "Du hast verloren. " : "";
+    const g = z.gewonnen || {}, sieger = menschen.filter((m) => g[m] === true), verlierer = menschen.filter((m) => g[m] === false);
+    const du = !mehrere()
+      ? (sieger.length ? "Du hast gewonnen! " : verlierer.length ? "Du hast verloren. " : "")
+      : (sieger.length ? `Gewonnen: ${sieger.join(", ")}. ` : "") + (verlierer.length ? `Verloren: ${verlierer.join(", ")}. ` : "");
     const wo = z.protokoll ? ` Alle Geheimnisse stehen im Protokoll ${z.protokoll}.` : " Alle Geheimnisse stehen im Protokoll:";
     zeigeBanner(`${du}Ergebnis: ${z.ende}.${wo}`, "ende");
     for (const d of z.downloads || []) {  // Browser-Modus: Dateien zum Herunterladen
@@ -501,6 +589,7 @@ function zeichnen(z) {
       link.style.marginRight = "12px";
       $("banner").firstChild.append(document.createElement("br"), link);
     }
+    zugSchluessel = null;
     $("zug").replaceChildren();
   }
 }
@@ -511,7 +600,7 @@ function ereignisAnzeigen(e) {
     letztePhase = e.phase;
     tisch.append(Object.assign(document.createElement("div"), { className: "phase", textContent: e.phase }));
   }
-  const eigene = e.art === "rede" && e.text.startsWith(`${ich}:`);
+  const eigene = e.art === "rede" && menschen.some((m) => e.text.startsWith(`${m}:`));
   tisch.append(Object.assign(document.createElement("div"), {
     className: `ereignis ${e.art}${eigene ? " ich" : ""}`, textContent: e.text,
   }));
@@ -525,13 +614,23 @@ function zeigeBanner(text, art) {
 // --- Dein Zug -------------------------------------------------------------
 const PARAMETER = { ziel: "Wen?", ziel1: "Erster Spieler", ziel2: "Zweiter Spieler", karte: "Welche Karte aus der Mitte?" };
 
+// Den Zug nur neu zeichnen, wenn er sich ändert – sonst ginge dein Text bei jeder Abfrage verloren.
+function zugZeigen(f) {
+  const schluessel = JSON.stringify([f, spielEnde]);
+  if (schluessel === zugSchluessel) return;
+  zugSchluessel = schluessel;
+  zugAnzeigen(f);
+}
+
 function zugAnzeigen(frage) {
   const zug = $("zug");
   if (!frage) {
-    zug.replaceChildren(Object.assign(document.createElement("p"), { className: "warten", textContent: "Die anderen sind dran …" }));
+    zug.replaceChildren(...(spielEnde ? [] : [
+      Object.assign(document.createElement("p"), { className: "warten", textContent: "Die anderen sind dran …" })]));
     return;
   }
-  const teile = [Object.assign(document.createElement("h2"), { textContent: `Du bist dran (${frage.phase})` })];
+  const wer = mehrere() ? `${frage.wer} ist dran` : "Du bist dran";
+  const teile = [Object.assign(document.createElement("h2"), { textContent: `${wer} (${frage.phase})` })];
   if (frage.hinweis) teile.push(Object.assign(document.createElement("p"), { className: "hinweis", textContent: frage.hinweis }));
 
   let tool = frage.tools.length === 1 ? frage.tools[0] : null;
@@ -581,6 +680,7 @@ function zugAnzeigen(frage) {
     const text = bereich.querySelector("textarea");
     if (tool.text) parameter.text = text.value.trim();
     await api("/api/aktion", { tool: tool.name, parameter, nummer: frage.nummer });
+    zugErledigt();
     abfragen();
   });
 

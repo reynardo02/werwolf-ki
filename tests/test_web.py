@@ -37,17 +37,17 @@ def durchspielen(sitzung: Sitzung, frist: float = 10.0) -> dict:
 
 @pytest.mark.parametrize("regeln", ["vollmondnacht", "klassisch"])
 def test_partie_im_browser_durchspielen(regeln: str, tmp_path: Path) -> None:
-    sitzung = Sitzung(regeln=regeln, spieler=5, llm="0", ich="Ben", ordner=tmp_path, seed=3)
+    sitzung = Sitzung(regeln=regeln, spieler=5, llm="0", menschen=("Ben",), ordner=tmp_path, seed=3)
     zustand = durchspielen(sitzung)
     assert zustand["fehler"] is None and zustand["ende"]
-    assert zustand["gewonnen"] in (True, False)
+    assert zustand["gewonnen"]["Ben"] in (True, False)
     texte = [e["text"] for e in zustand["ereignisse"]]
     assert any("Spielende" in t for t in texte)
     assert (tmp_path / f"{sitzung.dateiname}.jsonl").exists()
 
 
 def test_browser_sieht_keine_geheimnisse(tmp_path: Path) -> None:
-    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", ich="Anna", ordner=tmp_path, seed=8)
+    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", menschen=("Anna",), ordner=tmp_path, seed=8)
     zustand = durchspielen(sitzung)
     arten = {e["art"] for e in zustand["ereignisse"]}
     assert "nacht_aktion" not in arten and "begruendung" not in arten
@@ -56,7 +56,7 @@ def test_browser_sieht_keine_geheimnisse(tmp_path: Path) -> None:
 
 
 def test_doppelklick_wird_ignoriert(tmp_path: Path) -> None:
-    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", ich="Anna", ordner=tmp_path, seed=1)
+    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", menschen=("Anna",), ordner=tmp_path, seed=1)
     sitzung.starten()
     while not sitzung.zustand()["frage"]:
         time.sleep(0.01)
@@ -67,7 +67,7 @@ def test_doppelklick_wird_ignoriert(tmp_path: Path) -> None:
 
 
 def test_abbrechen_beendet_wartende_partie(tmp_path: Path) -> None:
-    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", ich="Anna", ordner=tmp_path, seed=1)
+    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", menschen=("Anna",), ordner=tmp_path, seed=1)
     sitzung.starten()
     while not sitzung.zustand()["frage"]:
         time.sleep(0.01)
@@ -150,13 +150,13 @@ def test_server_partie_durchspielen(server: str) -> None:
             tool, parameter = antwort(z["frage"])
             anfrage(server + "/api/aktion", {"tool": tool, "parameter": parameter})
         time.sleep(0.02)
-    assert z["ende"] and z["ich"] == "Clara" and not z["fehler"]
+    assert z["ende"] and z["menschen"] == ["Clara"] and not z["fehler"]
     assert anfrage(server + "/api/aktion", {"tool": "sprechen"})[0] == 409  # niemand gefragt
 
 
 def test_jede_frage_hat_eine_neue_nummer(tmp_path: Path) -> None:
     # Klassisch mit 5 Spielern: Du sprichst mehrmals hintereinander – gleiche Frage, neue Nummer.
-    sitzung = Sitzung(regeln="klassisch", spieler=5, llm="0", ich="Anna", ordner=tmp_path, seed=2)
+    sitzung = Sitzung(regeln="klassisch", spieler=5, llm="0", menschen=("Anna",), ordner=tmp_path, seed=2)
     sitzung.starten()
     nummern = []
     ende = time.monotonic() + 10
@@ -183,11 +183,20 @@ def test_jede_rolle_hat_ein_kartenbild() -> None:
 
 
 def test_karte_steht_vor_dem_ersten_zug_fest(tmp_path: Path) -> None:
-    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", ich="Clara", ordner=tmp_path, seed=6)
+    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", menschen=("Clara",), ordner=tmp_path, seed=6)
     sitzung.starten()
     while not sitzung.zustand()["frage"]:
         time.sleep(0.01)
     zustand = sitzung.zustand()
-    assert zustand["karte"] == zustand["frage"]["rolle"]
+    assert zustand["karten"] == {"Clara": zustand["frage"]["rolle"]}
     assert zustand["karte_titel"] == "Deine Karte zu Beginn"
     sitzung.beenden()
+
+
+@pytest.mark.parametrize("regeln", ["vollmondnacht", "klassisch"])
+def test_mehrere_menschen_im_server(regeln: str, tmp_path: Path) -> None:
+    sitzung = Sitzung(regeln=regeln, spieler=5, llm="0", menschen=("Anna", "Clara", "Emil"), ordner=tmp_path, seed=4)
+    zustand = durchspielen(sitzung)
+    assert zustand["fehler"] is None and zustand["ende"]
+    assert set(zustand["karten"]) == set(zustand["gewonnen"]) == {"Anna", "Clara", "Emil"}
+    assert set(zustand["geheimwissen"]) <= {"Anna", "Clara", "Emil"}
