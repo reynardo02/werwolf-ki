@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from werwolf.aufbau import VOLLMONDNACHT
 from werwolf.mensch_spieler import BESCHRIFTUNG
 from werwolf.roles import Rolle as KlassischeRolle
 from werwolf.schnittstelle import ZIEL_TOOLS, Aktion, Ereignis, Zug
@@ -52,6 +53,10 @@ def frage_aus_zug(zug: Zug) -> dict[str, Any]:
         "hinweis": zug.hinweis,
         "tools": tools,
     }
+
+
+def karte_titel(regeln: str) -> str:
+    return "Deine Karte zu Beginn" if regeln == VOLLMONDNACHT else "Deine Rolle"
 
 
 class WebSpieler:
@@ -107,6 +112,7 @@ class Sitzung:
     ende: str | None = None
     fehler: str | None = None
     gewonnen: bool | None = None  # steht nach dem Spielende fest
+    karte: str | None = None  # deine Karte (Vollmondnacht) bzw. Rolle, steht nach dem Austeilen fest
     mensch: WebSpieler = field(default_factory=WebSpieler)
 
     def __post_init__(self) -> None:
@@ -124,6 +130,10 @@ class Sitzung:
                     elif isinstance(self.mensch.rolle, KlassischeRolle):  # klassisch: dein Team
                         self.gewonnen = self.mensch.rolle.team.value == ereignis.daten.get("gewinner")
 
+    def _rollen_bekannt(self, rolle_von: dict[str, str]) -> None:
+        with self._lock:
+            self.karte = rolle_von[self.ich]  # nur deine – die anderen bleiben geheim
+
     def starten(self) -> None:
         self._thread = threading.Thread(target=self._spielen, daemon=True)
         self._thread.start()
@@ -140,7 +150,7 @@ class Sitzung:
             kurz = partie_spielen(
                 self.seed, self.spieler, anzahl_llm, client, self.dateiname, ausfuehrlich=False,
                 regeln=self.regeln, szenario=self.szenario, mensch=self.ich, mensch_spieler=self.mensch,
-                beobachter_extra=self._beobachten, konsole=False,
+                beobachter_extra=self._beobachten, konsole=False, rollen_bekannt=self._rollen_bekannt,
                 **({"ordner": self.ordner} if self.ordner else {}),
             )
             with self._lock:
@@ -162,6 +172,8 @@ class Sitzung:
                 "anzahl": len(self.ereignisse),
                 "frage": self.mensch.frage,
                 "geheimwissen": self.mensch.geheimwissen,
+                "karte": self.karte,
+                "karte_titel": karte_titel(self.regeln),
                 "ende": self.ende,
                 "gewonnen": self.gewonnen,
                 "fehler": self.fehler,

@@ -53,6 +53,13 @@
                   text-align: center; border: 2px solid #1f1d1a; border-radius: 10px; color: #1f1d1a;
                   font: 700 .85rem/1.2 Georgia, serif; text-transform: uppercase; letter-spacing: 0; padding: 8px;
                   hyphens: auto; overflow-wrap: break-word; }
+  /* Einstieg: Bevor der Chat erscheint, liegt deine Karte groß in der Mitte. */
+  #einstieg { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #einstieg .karte { width: min(240px, 60vw, calc(var(--hoehe, 100dvh) * .4)); margin-bottom: 12px; }
+  #einstieg .karte-tipp { max-width: 32em; }
+  body.einstieg #einstieg { display: flex; }
+  body.einstieg #tisch, body.einstieg #zug, body.einstieg #status,
+  body.einstieg #tisch-bereich > h2, body.einstieg #du { display: none; }
   .karte-tipp { text-align: center; font-size: .85rem; color: var(--leise); margin: 0 0 8px; }
   @media (prefers-reduced-motion: reduce) { .karte-innen { transition: none; } }
   .wissen { margin: 8px 0 0; padding-left: 18px; }
@@ -77,7 +84,8 @@
   body.laeuft main { flex: 1; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr); }
   body.laeuft #tisch-bereich { display: flex; flex-direction: column; min-height: 0; }
   body.laeuft #tisch { flex: 1; min-height: 0; max-height: none; }
-  body.laeuft #zug, body.laeuft #zug-verdeckt { flex-shrink: 0; max-height: 45%; overflow-y: auto; }
+  body.laeuft #einstieg { flex: 1; min-height: 0; overflow-y: auto; }
+  body.laeuft #zug { flex-shrink: 0; max-height: 45%; overflow-y: auto; }
   body.laeuft #seite { min-height: 0; overflow-y: auto; }
 
   /* Handy und iPad hochkant: Karte, Wissen und Menü liegen in einem Blatt über dem Tisch. */
@@ -114,11 +122,19 @@
     <div id="banner"></div>
     <p id="status" class="warten"></p>
     <div id="tisch"><p class="leer">Starte eine neue Partie.</p></div>
-    <!-- Dein Zug sitzt direkt unter dem Chat, damit Lesen und Schreiben ohne Scrollen gehen. -->
-    <div id="zug-verdeckt" class="dock" hidden>
-      <p class="warten" style="margin:0">Sieh dir zuerst deine Karte an.</p>
-      <button id="karte-ansehen" type="button">Karte ansehen</button>
+    <!-- Bevor der Chat erscheint: deine Karte, groß und verdeckt. -->
+    <div id="einstieg">
+      <h2 id="einstieg-titel">Deine Karte zu Beginn</h2>
+      <button id="einstieg-karte" class="karte" type="button" aria-label="Deine Karte (verdeckt)">
+        <div class="karte-innen">
+          <div class="karte-seite"><img src="karten/rueckseite.jpg" alt="Kartenrückseite"></div>
+          <div class="karte-seite karte-vorne" id="einstieg-vorne"></div>
+        </div>
+      </button>
+      <p id="einstieg-tipp" class="karte-tipp">Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.</p>
+      <button id="zum-tisch" type="button" hidden>Zum Tisch</button>
     </div>
+    <!-- Dein Zug sitzt direkt unter dem Chat, damit Lesen und Schreiben ohne Scrollen gehen. -->
     <div id="zug" class="dock"></div>
   </section>
 
@@ -283,14 +299,25 @@ for (const id of ["basis", "modell"]) {
 // --- Deine Karte ----------------------------------------------------------
 // Bilddateien heißen wie die Rolle, klein und ohne Umlaute: „Räuber“ → karten/raeuber.jpg.
 const UMLAUTE = { "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss" };
-let kartenRolle = null, angesehen = false;
+let kartenRolle = null, angesehen = false, seed = null;
 
-// Geheimwissen und Zug verraten die Karte – sie erscheinen erst, wenn du sie einmal angesehen hast.
+// Geheimwissen verrät die Karte – es erscheint erst, wenn du sie einmal angesehen hast.
 function verdecktesAusblenden() {
-  const verdeckt = Boolean(kartenRolle) && !angesehen;
-  $("wissen").hidden = verdeckt;
-  $("zug").hidden = verdeckt;
-  $("zug-verdeckt").hidden = !verdeckt;
+  $("wissen").hidden = Boolean(kartenRolle) && !angesehen;
+}
+
+// Einstieg: Zu Beginn jeder Partie siehst du nur deine Karte, erst danach den Tisch.
+// Pro Partie gemerkt, damit Neuladen nicht wieder bei der Karte anfängt.
+const AM_TISCH = () => `werwolf-am-tisch-${seed}`;
+function amTischGemerkt() {
+  try { return sessionStorage.getItem(AM_TISCH()) === "1"; } catch { return false; }
+}
+function einstiegBeenden() {
+  try { sessionStorage.setItem(AM_TISCH(), "1"); } catch { /* dann eben nicht merken */ }
+  document.body.classList.remove("einstieg");
+  amEnde = true;
+  $("tisch").scrollTop = $("tisch").scrollHeight;
+  if (!MOBIL.matches) $("zug").querySelector("textarea")?.focus();
 }
 
 // --- Handy-Layout ---------------------------------------------------------
@@ -312,11 +339,6 @@ function blattOeffnen(offen) {
 }
 $("blatt-auf").addEventListener("click", () => blattOeffnen(true));
 $("blatt-zu").addEventListener("click", () => blattOeffnen(false));
-$("karte-ansehen").addEventListener("click", () => {
-  if (MOBIL.matches) blattOeffnen(true);
-  else $("karte").focus();
-  if (!$("karte").classList.contains("offen")) $("karte").click();
-});
 
 // Wer im Chat nach oben scrollt, um nachzulesen, soll nicht bei jeder Nachricht nach unten springen.
 $("tisch").addEventListener("scroll", () => {
@@ -328,26 +350,51 @@ function kartenDatei(rolle) {
   return `karten/${rolle.toLowerCase().replace(/[äöüß]/g, (z) => UMLAUTE[z]).replace(/[^a-z]/g, "")}.jpg`;
 }
 
-function karteZeigen(rolle) {
-  if (rolle === kartenRolle) return;
-  kartenRolle = rolle;
-  angesehen = false;
-  verdecktesAusblenden();
-  const karte = $("karte"), vorne = $("karte-vorne");
-  karte.classList.remove("offen");
-  karte.disabled = !rolle;
-  karte.setAttribute("aria-label", "Deine Karte (verdeckt)");
-  $("rolle").hidden = true;
+function vorderseite(vorne, rolle) {
   vorne.replaceChildren();
-  $("blatt-auf").textContent = "Deine Karte";
-  if (!rolle) { $("karte-tipp").textContent = "Deine Karte liegt verdeckt vor dir."; return; }
-  $("karte-tipp").textContent = "Klicke auf die Karte, um sie anzusehen.";
+  if (!rolle) return;
   const bild = Object.assign(document.createElement("img"), { src: kartenDatei(rolle), alt: rolle });
   // Gibt es (noch) kein Bild für diese Rolle, zeigen wir eine schlichte Karte mit dem Namen.
   bild.addEventListener("error", () => vorne.replaceChildren(
     Object.assign(document.createElement("div"), { className: "karte-ersatz", textContent: rolle })));
   vorne.append(bild);
 }
+
+function karteZeigen(rolle) {
+  if (rolle === kartenRolle) return;
+  kartenRolle = rolle;
+  // Schon am Tisch gewesen (Seite neu geladen)? Dann gilt die Karte als angesehen.
+  angesehen = Boolean(rolle) && amTischGemerkt();
+  document.body.classList.toggle("einstieg", Boolean(rolle) && !angesehen);
+  verdecktesAusblenden();
+  for (const id of ["karte", "einstieg-karte"]) {
+    $(id).classList.remove("offen");
+    $(id).setAttribute("aria-label", "Deine Karte (verdeckt)");
+  }
+  $("karte").disabled = !rolle;
+  vorderseite($("karte-vorne"), rolle);
+  vorderseite($("einstieg-vorne"), rolle);
+  $("rolle").hidden = true;
+  $("zum-tisch").hidden = true;
+  $("einstieg-tipp").textContent = "Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.";
+  $("blatt-auf").textContent = angesehen ? `Karte: ${rolle}` : "Deine Karte";
+  $("karte-tipp").textContent = rolle ? "Klicke auf die Karte, um sie anzusehen." : "Deine Karte liegt verdeckt vor dir.";
+}
+
+$("einstieg-karte").addEventListener("click", () => {
+  const karte = $("einstieg-karte"), offen = karte.classList.toggle("offen");
+  karte.setAttribute("aria-label", offen ? `Deine Karte: ${kartenRolle}` : "Deine Karte (verdeckt)");
+  $("einstieg-tipp").textContent = offen
+    ? `Du bist ${kartenRolle}. Merk sie dir – am Tisch findest du sie jederzeit wieder.`
+    : "Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.";
+  if (offen) {
+    angesehen = true;
+    $("zum-tisch").hidden = false;
+    $("blatt-auf").textContent = `Karte: ${kartenRolle}`;
+    verdecktesAusblenden();
+  }
+});
+$("zum-tisch").addEventListener("click", einstiegBeenden);
 
 $("karte").addEventListener("click", () => {
   const offen = $("karte").classList.toggle("offen");
@@ -415,16 +462,20 @@ async function abfragen() {
 
 function zeichnen(z) {
   ich = z.ich;
+  seed = z.seed;
   document.body.classList.add("laeuft");
   $("kopfzeile").textContent = `Du spielst als ${z.ich} · Seed ${z.seed}`;
   for (const e of z.ereignisse) ereignisAnzeigen(e);
   anzahl = z.anzahl;
 
   $("du").hidden = false;
-  if (z.frage) {
-    $("rolle-titel").textContent = z.frage.rolle_titel;
-    $("rolle").textContent = z.frage.rolle;
-    karteZeigen(z.frage.rolle);
+  // Deine Karte steht schon beim Austeilen fest, vor dem ersten Zug.
+  const karte = z.karte || z.frage?.rolle, titel = z.karte_titel || z.frage?.rolle_titel;
+  if (karte) {
+    $("rolle-titel").textContent = titel;
+    $("einstieg-titel").textContent = titel;
+    $("rolle").textContent = karte;
+    karteZeigen(karte);
   }
   $("wissen").replaceChildren(...z.geheimwissen.map((w) => Object.assign(document.createElement("li"), { textContent: w })));
 

@@ -69,7 +69,9 @@ Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser,
 Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten/rueckseite.jpg) und dreht sich per Klick um.
   Bilder für alle 12 Rollen (beide Varianten), Name wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins,
   erscheint eine schlichte Karte mit dem Namen.
-  Geheimwissen und Zug erscheinen erst, wenn du die Karte einmal angesehen hast.
+  Zu Beginn jeder Partie zeigt die Seite statt des Chats nur deine Karte (groß, verdeckt); erst nach dem Umdrehen
+  geht es mit „Zum Tisch“ weiter. Die Karte kommt schon beim Austeilen mit (`karte` im Zustand, über `rollen_bekannt`
+  in main.py bzw. `rolle_von` in web/browser.py), nicht erst mit deinem ersten Zug. Geheimwissen erscheint erst danach.
 Zusatz: Handy und iPad – während der Partie füllt die Seite genau den Bildschirm (Höhe aus visualViewport, schrumpft mit
   der Tastatur). Nur der Chat scrollt, dein Zug steht fest darunter und der Chat springt nur nach unten, wenn du schon unten warst.
   Bis 900 px Breite liegen Karte und „Neue Partie“ in einem Blatt, das der Knopf oben rechts öffnet. Kein Autofokus aufs Textfeld.

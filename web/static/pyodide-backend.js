@@ -80,7 +80,8 @@ function zustand(seit) {
   return {
     laeuft: true, ich: partie.einstellungen.ich, seed: partie.seed,
     ereignisse: z.ereignisse.slice(seit), anzahl: z.ereignisse.length,
-    frage: z.frage || null, geheimwissen: z.geheimwissen, ende: z.ende || null, gewonnen: z.gewonnen ?? null,
+    frage: z.frage || null, geheimwissen: z.geheimwissen, karte: z.karte || null, karte_titel: z.karte_titel || null,
+    ende: z.ende || null, gewonnen: z.gewonnen ?? null,
     fehler: partie.fehler, wiederholbar: Boolean(partie.fehler), status: partie.status, downloads,
   };
 }

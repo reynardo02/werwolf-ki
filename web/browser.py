@@ -35,7 +35,7 @@ except ImportError:
 from core.llm_client import Antwort  # noqa: E402 – erst nach dem Platzhalter importieren
 from core.tools import ToolCall, ToolSchema  # noqa: E402
 from web.einstellungen import Fehler, einstellungen_pruefen, optionen  # noqa: E402
-from web.sitzung import frage_aus_zug  # noqa: E402
+from web.sitzung import frage_aus_zug, karte_titel  # noqa: E402
 from werwolf.aufbau import (  # noqa: E402
     NAMEN,
     VOLLMONDNACHT,
@@ -196,6 +196,8 @@ def schritt(
         {"phase": x.phase.value, "art": x.art, "text": x.text} for x in alle if x.oeffentlich
     ]
     zustand["geheimwissen"] = mensch.geheimwissen
+    zustand["karte"] = rolle_von[e.ich]  # nur deine – die anderen bleiben geheim
+    zustand["karte_titel"] = karte_titel(e.regeln)
     return zustand
 
 
