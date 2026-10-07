@@ -97,7 +97,7 @@ def test_partie_mit_mensch_verraet_keine_geheimnisse(tmp_path, capsys) -> None:
 
     mensch = MenschSpieler(Tastatur(), print)
     partie_spielen(5, 5, 0, None, "m", ausfuehrlich=True, ordner=tmp_path,
-                   regeln=VOLLMONDNACHT, mensch="Ben", mensch_spieler=mensch)
+                   regeln=VOLLMONDNACHT, menschen=["Ben"], mensch_spieler=mensch)
     ausgabe = capsys.readouterr().out
     assert "Du spielst als Ben" in ausgabe
     assert "[geheim]" not in ausgabe and "Mitte:" not in ausgabe  # keine Besetzung, keine Nachtaktionen

@@ -27,7 +27,7 @@ class VollmondPartie:
     zufallsaktionen: int
     api: dict[str, Any] | None
     sieger: list[str] = field(default_factory=list)
-    mensch: str | None = None  # Platz, an dem ein Mensch gespielt hat
+    mensch: str | None = None  # Platz, an dem du gespielt hast (nur bei genau einem Menschen)
     seed: int | None = None
 
 
@@ -38,8 +38,12 @@ def partie_aus_log(zeilen: list[dict[str, Any]]) -> VollmondPartie:
     ende = next((z for z in zeilen if z["art"] in ("ergebnis", "abbruch")), {})
     llm = sum(1 for s in kopf["spieler"] if s["typ"] == "llm")
     modell = f"{kopf.get('modell')} ({llm}/{len(kopf['spieler'])} LLM)" if llm else "nur MockAgenten"
-    if any(s["typ"] == "mensch" for s in kopf["spieler"]):
-        modell += ", mit Mensch"  # getrennt halten, sonst verfälscht es die Experimente
+    menschen = [s["name"] for s in kopf["spieler"] if s["typ"] == "mensch"]
+    # Getrennt halten, sonst verfälscht es die Experimente.
+    if len(menschen) == 1:
+        modell += ", mit Mensch"
+    elif menschen:
+        modell += f", mit {len(menschen)} Menschen"
     return VollmondPartie(
         gruppe=f"{kopf.get('szenario')}, {modell}",
         startrollen={s["name"]: s["rolle"] for s in kopf["spieler"]},
@@ -50,7 +54,9 @@ def partie_aus_log(zeilen: list[dict[str, Any]]) -> VollmondPartie:
         zufallsaktionen=sum(1 for z in zeilen if z["art"] == "zufallsaktion"),
         api=ende.get("api"),
         sieger=ende.get("sieger", []),
-        mensch=next((s["name"] for s in kopf["spieler"] if s["typ"] == "mensch"), None),
+        # Deine Bilanz zählt nur Partien, in denen du allein gespielt hast – bei mehreren
+        # Menschen an einem Gerät ist nicht klar, welcher Platz du warst.
+        mensch=menschen[0] if len(menschen) == 1 else None,
         seed=kopf.get("seed"),
     )
 

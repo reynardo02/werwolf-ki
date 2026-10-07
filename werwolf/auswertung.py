@@ -29,7 +29,8 @@ class Partie:
         llm = sum(1 for t in self.typen.values() if t == "llm")
         gruppe = f"{self.modell} ({llm}/{len(self.typen)} Spieler LLM)" if llm else "nur MockAgenten"
         # Partien mit Mensch getrennt halten, sonst verfälschen sie die Experimente.
-        return gruppe + (", mit Mensch" if "mensch" in self.typen.values() else "")
+        menschen = sum(1 for t in self.typen.values() if t == "mensch")
+        return gruppe + (", mit Mensch" if menschen == 1 else f", mit {menschen} Menschen" if menschen else "")
 
 
 def partie_aus_log(zeilen: list[dict[str, Any]]) -> Partie:

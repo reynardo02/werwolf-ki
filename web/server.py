@@ -33,7 +33,7 @@ KARTEN_PFAD = re.compile(r"/karten/([a-z]+\.jpg)")
 def sitzung_aus_anfrage(daten: dict[str, Any], ordner: Path | None = None) -> Sitzung:
     """Prüft die Einstellungen aus dem Formular und baut daraus eine Sitzung."""
     e = einstellungen_pruefen(daten)
-    return Sitzung(regeln=e.regeln, spieler=e.spieler, llm=e.llm, ich=e.ich, szenario=e.szenario, ordner=ordner)
+    return Sitzung(regeln=e.regeln, spieler=e.spieler, llm=e.llm, menschen=e.menschen, szenario=e.szenario, ordner=ordner)
 
 
 class Handler(BaseHTTPRequestHandler):

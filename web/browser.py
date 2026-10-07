@@ -68,15 +68,19 @@ class BrauchtLLM(Exception):
 
 
 class WiederholSpieler:
-    """Du: gibt der Reihe nach deine bisherigen Antworten zurück, danach fragt er."""
+    """Alle Menschen: gibt der Reihe nach die bisherigen Antworten zurück, danach fragt er.
+
+    Eine Liste reicht auch für mehrere Menschen: Die Engine fragt bei gleichem Seed
+    und gleichen Antworten immer in derselben Reihenfolge.
+    """
 
     def __init__(self, antworten: list[dict[str, Any]]) -> None:
         self.antworten = antworten
         self.i = 0
-        self.geheimwissen: list[str] = []
+        self.geheimwissen: dict[str, list[str]] = {}  # Platz -> zuletzt bekanntes Geheimwissen
 
     def handeln(self, zug: Zug) -> Aktion:
-        self.geheimwissen = list(zug.geheimwissen)
+        self.geheimwissen[zug.ich] = list(zug.geheimwissen)
         if self.i < len(self.antworten):
             antwort = self.antworten[self.i]
             self.i += 1
@@ -129,11 +133,11 @@ def antwort_aus_json(daten: dict[str, Any]) -> Antwort:
     return Antwort(ToolCall(str(funktion.get("name")), argumente), text)
 
 
-def _gewonnen(ergebnis: Any, engine: Any, ich: str) -> bool:
+def _gewonnen(ergebnis: Any, engine: Any, menschen: tuple[str, ...]) -> dict[str, bool]:
     if isinstance(ergebnis, VollmondErgebnis):
-        return ich in ergebnis.sieger
+        return {m: m in ergebnis.sieger for m in menschen}
     assert isinstance(engine, Engine)
-    return engine.spieler[ich].rolle.team == ergebnis.gewinner
+    return {m: engine.spieler[m].rolle.team == ergebnis.gewinner for m in menschen}
 
 
 def _log_text(kopf: dict[str, Any], ereignisse: list[Ereignis], daten: dict[str, Any]) -> str:
@@ -162,13 +166,13 @@ def schritt(
 
     mensch = WiederholSpieler(antworten_mensch)
     client = WiederholClient(modell, antworten_llm) if e.anzahl_llm else None
-    besetzung = agenten_bauen(seed, rng, namen, e.anzahl_llm, client, e.regeln, e.ich, mensch)
+    besetzung = agenten_bauen(seed, rng, namen, e.anzahl_llm, client, e.regeln, e.menschen, mensch)
     alle: list[Ereignis] = []
     engine, rolle_von = engine_bauen(e.regeln, besetzung.agenten, rng, szenario or "", alle.append)
 
     zustand: dict[str, Any] = {
-        "ich": e.ich, "seed": seed, "frage": None, "llm_anfrage": None,
-        "ende": None, "gewonnen": None, "protokoll": None, "log": None,
+        "menschen": list(e.menschen), "seed": seed, "frage": None, "llm_anfrage": None,
+        "ende": None, "gewonnen": {}, "protokoll": None, "log": None,
     }
     try:
         ergebnis = engine.spielen()
@@ -179,7 +183,7 @@ def schritt(
     else:
         kurz, zeilen, daten = ergebnis_zusammenfassen(ergebnis)
         zustand["ende"] = kurz
-        zustand["gewonnen"] = _gewonnen(ergebnis, engine, e.ich)
+        zustand["gewonnen"] = _gewonnen(ergebnis, engine, e.menschen)
         kopf = kopf_bauen(e.regeln, modell or None, seed, namen, rolle_von, besetzung, engine, szenario)
         protokoll = Protokoll(ausgabe=None)
         protokoll.kopf(*protokoll_kopf(kopf))
@@ -196,7 +200,7 @@ def schritt(
         {"phase": x.phase.value, "art": x.art, "text": x.text} for x in alle if x.oeffentlich
     ]
     zustand["geheimwissen"] = mensch.geheimwissen
-    zustand["karte"] = rolle_von[e.ich]  # nur deine – die anderen bleiben geheim
+    zustand["karten"] = {m: rolle_von[m] for m in e.menschen}  # nur die der Menschen
     zustand["karte_titel"] = karte_titel(e.regeln)
     return zustand
 
