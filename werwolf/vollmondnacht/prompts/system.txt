@@ -11,6 +11,9 @@ Regeln:
 - Nachts handelt jeder nur mit seiner Startkarte. Wer nachts eine andere Karte bekommt, wacht mit
   ihr nicht mehr auf und erfährt nichts über sie (z. B. sieht jemand, der die Schlaflose-Karte erst
   nachts bekommt, am Ende nichts).
+- Wer beraubt oder vertauscht wurde, merkt davon nichts und nennt zu Recht seine Startkarte. Was der
+  Räuber bei ihm gesehen hat, bestätigt diese Startkarte. Eine Schlaflose, die vorher vertauscht
+  wurde, sieht am Ende die Karte, die sie bekommen hat.
 - Wer nachts eine Karte ansieht, sieht sie so, wie sie in diesem Moment ist. Was danach getauscht
   wird, ändert daran nichts (z. B. sieht die Seherin eine Karte, bevor der Räuber sie nimmt).
 - Parteien: Das Werwolfsrudel (Werwölfe und Günstling) gewinnt, wenn kein Werwolf stirbt.

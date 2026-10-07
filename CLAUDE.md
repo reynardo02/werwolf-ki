@@ -197,4 +197,13 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   (Anna habe jetzt den Betrunkenen – den hatte aber die Räuberin geraubt) und tötete Anna trotzdem, obwohl es ihr selbst
   eine Dorf-Karte zurechnete. Der Betrunkene, der einen Werwolf aus der Mitte gezogen hatte, blieb unbeachtet. KARTENWEG
   sagt jetzt: Wer laut Kartenkette eine Dorf-Karte hat, ist kein Werwolf; der Betrunkene kann ahnungslos Werwolf sein.
+- Serie 15, gpt-5.4, mit Pflicht-Tausch und KARTENWEG-Fix, Seeds 920519–920538: 59,3 % (Zufall 25,9 %), Start-Werwölfe
+  51,9 %, Dorf gewinnt 11/20 (Serie 14: 10/20 – im Rauschen). 920520 einmal gewonnen (Betrunkener mit Werwolf erkannt),
+  einmal verloren. Ehrlicher Betrunkener als Sündenbock nur 1× (526, dort übersah das Dorf einen späten Rollenwechsel).
+  9 Niederlagen: 4× Start- und Endkarte verwechselt (520, 529: Dorf tötet wissentlich eine Dorf-Karte, „er nennt nur seine
+  Startkarte“; 527: vertauschte Schlaflose gilt als Lügnerin; 537: Räuberin hält den Beraubten für einen Lügner, obwohl ihr
+  Blick ihn bestätigt), 2× Kartenweg übersehen (533, 536), 2× 50:50 nach Redereihenfolge (519, 538), 1× Betrunkener (526).
+- Fix danach: Abstimmungs-Aufgabe fürs Dorf sagt „nicht auf jemanden, dem du selbst eine Dorf-Karte zurechnest“ (DORF_STIMME
+  in vollmondnacht/llm_spieler.py). Neue Regel in system.txt: Beraubte und Vertauschte nennen zu Recht ihre Startkarte, der
+  Blick des Räubers bestätigt sie; eine vorher vertauschte Schlaflose sieht die Karte, die sie bekommen hat.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
