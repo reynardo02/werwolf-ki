@@ -126,9 +126,15 @@ AUFGABEN = {
 
 # Serie 15 (920520, 920529): Das Dorf rechnete einem ehrlichen, beraubten Spieler selbst die
 # Räuber-Karte zu und stimmte trotzdem gegen ihn, „weil er nur seine Startkarte nennt“.
+# Serie 16: 920520 – „Dorf-Karte“ wurde als „Dorfbewohner-Karte“ gelesen (A1); 920523 – ein vertauschter
+# Lügner starb statt des neuen Kartenbesitzers (A2); 920519/526/532 – wer erst „Dorfbewohner“ und später
+# eine andere Startkarte nannte, fiel niemandem auf (C).
 DORF_STIMME = (
     " Zeige auf den, der jetzt am wahrscheinlichsten eine Werwolf-Karte hat – nicht auf jemanden, "
-    "dem du selbst eine Dorf-Karte zurechnest."
+    "dem du selbst eine Dorf-Karte zurechnest (jede Karte außer Werwolf, Günstling und Gerber, also "
+    "auch Räuber, Seherin oder Unruhestifterin). Wurde ein Lügner nachweislich beraubt oder vertauscht, "
+    "hat er seine Werwolf-Karte nicht mehr – stimme gegen den, der sie jetzt hat. Ehrliche Spieler "
+    "nennen von Anfang an ihre Startkarte: Wer seine Startkarte später ändert, hat mindestens einmal gelogen."
 )
 
 # Manche Spieler (vor allem Werwölfe) redeten herum, ohne je eine Karte zu nennen.

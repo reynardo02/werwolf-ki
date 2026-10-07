@@ -274,6 +274,10 @@ def test_dorf_stimmt_nicht_gegen_eine_dorf_karte() -> None:
     # Wer nachts eine Werwolf-Karte geraubt hat, stimmt fürs Rudel.
     assert DORF_STIMME not in spieler.zug_prompt(
         replace(zug, rolle=Rolle.RAEUBER, bekannte_karte=Rolle.WERWOLF))
+    # Serie 16: „Dorf-Karte“ ist definiert, Kartenweg geht vor Lüge, Startkarten-Wechsel ist eine Lüge.
+    assert "jede Karte außer Werwolf, Günstling und Gerber" in DORF_STIMME
+    assert "hat er seine Werwolf-Karte nicht mehr" in DORF_STIMME
+    assert "Wer seine Startkarte später ändert" in DORF_STIMME
 
 
 def test_regeln_beraubte_nennen_zu_recht_ihre_startkarte() -> None:
