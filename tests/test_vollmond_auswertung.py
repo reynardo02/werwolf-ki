@@ -46,6 +46,17 @@ def test_stimmen_gegen_start_und_end_werwoelfe() -> None:
     assert "Stimmen gegen Start-Werwölfe:" in bericht(a, "Test")
 
 
+def test_cache_anteil_im_bericht() -> None:
+    def partie(api: dict | None) -> VollmondPartie:
+        return VollmondPartie("Test", {"Anna": "Werwolf"}, {"Anna": "Werwolf"}, [], [], {}, 0, api)
+
+    # Ältere Logs ohne gecachte_tokens zählen als 0.
+    a = auswerten([partie({"aufrufe": 10, "input_tokens": 1000}), partie(None),
+                   partie({"aufrufe": 10, "input_tokens": 3000, "gecachte_tokens": 1000})])
+    assert "Input-Tokens aus dem Cache:" in bericht(a, "Test") and "25%" in bericht(a, "Test")
+    assert "aus dem Cache" not in bericht(auswerten([partie(None)]), "Test")
+
+
 def test_mensch_bericht() -> None:
     from werwolf.vollmondnacht.auswertung import mensch_bericht
 
