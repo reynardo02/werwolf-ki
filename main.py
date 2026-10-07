@@ -52,6 +52,7 @@ def partie_spielen(
     mensch_spieler: Agent | None = None,
     beobachter_extra: Callable[[Ereignis], None] | None = None,
     konsole: bool = True,
+    rollen_bekannt: Callable[[dict[str, str]], None] | None = None,
 ) -> str:
     """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück.
 
@@ -60,6 +61,8 @@ def partie_spielen(
     hinterher im Protokoll.
     `beobachter_extra` bekommt zusätzlich jedes Ereignis (z. B. für die Web-Oberfläche),
     `konsole=False` schaltet die Ausgabe auf der Konsole ab.
+    `rollen_bekannt` bekommt nach dem Austeilen die (Start-)Rolle jedes Spielers, z. B. damit
+    die Web-Oberfläche dir deine Karte zeigt, bevor am Tisch etwas passiert.
     """
     rng = random.Random(seed)
     namen = NAMEN[:anzahl_spieler]
@@ -87,6 +90,8 @@ def partie_spielen(
             b(ereignis)
 
     engine, rolle_von = engine_bauen(regeln, agenten, rng, szenario or "", beobachten)
+    if rollen_bekannt:
+        rollen_bekannt(rolle_von)
     modell = client.modell if client else None
     kopf = kopf_bauen(regeln, modell, seed, namen, rolle_von, besetzung, engine, szenario)
     log = JsonlLog(ordner / f"{dateiname}.jsonl", kopf)

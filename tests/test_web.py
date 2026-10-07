@@ -180,3 +180,14 @@ def test_jede_rolle_hat_ein_kartenbild() -> None:
         name = "".join(z for z in rolle.value.lower().translate(umlaute) if "a" <= z <= "z")
         assert (karten / f"{name}.jpg").is_file(), rolle.value
     assert (karten / "rueckseite.jpg").is_file()
+
+
+def test_karte_steht_vor_dem_ersten_zug_fest(tmp_path: Path) -> None:
+    sitzung = Sitzung(regeln="vollmondnacht", spieler=5, llm="0", ich="Clara", ordner=tmp_path, seed=6)
+    sitzung.starten()
+    while not sitzung.zustand()["frage"]:
+        time.sleep(0.01)
+    zustand = sitzung.zustand()
+    assert zustand["karte"] == zustand["frage"]["rolle"]
+    assert zustand["karte_titel"] == "Deine Karte zu Beginn"
+    sitzung.beenden()

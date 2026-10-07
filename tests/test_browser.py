@@ -128,3 +128,12 @@ def test_seite_bauen(tmp_path) -> None:
     assert "web/browser.py" in namen and "werwolf/prompts/persoenlichkeiten.txt" in namen
     assert "werwolf/vollmondnacht/prompts/system.txt" in namen
     assert not any("__pycache__" in n or n.startswith("tests/") or "static/" in n for n in namen)
+
+
+@pytest.mark.parametrize("regeln, titel", [("vollmondnacht", "Deine Karte zu Beginn"), ("klassisch", "Deine Rolle")])
+def test_deine_karte_steht_von_anfang_an_fest(regeln: str, titel: str) -> None:
+    # Auch wenn zuerst andere dran sind (LLM-Anfrage offen), kennt der Browser schon deine Karte.
+    einstellungen = {"regeln": regeln, "spieler": 5, "llm": "alle", "ich": "Emil"}
+    z = schritt(einstellungen, 4, [], [], modell="test-modell")
+    assert z["llm_anfrage"] is not None and z["frage"] is None
+    assert z["karte"] and z["karte_titel"] == titel
