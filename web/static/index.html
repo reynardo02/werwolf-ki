@@ -38,6 +38,23 @@
   .ereignis.ich { background: var(--markiert); }
   .ereignis.tod, .ereignis.spielende { font-weight: 600; }
   .rolle { font-size: 1.3rem; font-weight: 700; }
+  /* Spielkarte: liegt verdeckt, ein Klick dreht sie um (3D-Drehung um die senkrechte Achse). */
+  .karte { display: block; width: 180px; aspect-ratio: 2 / 3; margin: 8px auto 4px; padding: 0; border: 0;
+           background: none; perspective: 900px; cursor: pointer; }
+  .karte:disabled { cursor: default; opacity: 1; }
+  .karte-innen { position: relative; width: 100%; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+  .karte.offen .karte-innen { transform: rotateY(180deg); }
+  .karte-seite { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden;
+                 box-shadow: 0 4px 14px rgba(0, 0, 0, .35); background: #fff; }
+  .karte-seite img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .karte-vorne { transform: rotateY(180deg); }
+  /* Ersatz, solange es für eine Rolle noch kein Bild gibt. */
+  .karte-ersatz { position: absolute; inset: 6px; display: flex; align-items: center; justify-content: center;
+                  text-align: center; border: 2px solid #1f1d1a; border-radius: 10px; color: #1f1d1a;
+                  font: 700 .85rem/1.2 Georgia, serif; text-transform: uppercase; letter-spacing: 0; padding: 8px;
+                  hyphens: auto; overflow-wrap: break-word; }
+  .karte-tipp { text-align: center; font-size: .85rem; color: var(--leise); margin: 0 0 8px; }
+  @media (prefers-reduced-motion: reduce) { .karte-innen { transition: none; } }
   .wissen { margin: 8px 0 0; padding-left: 18px; }
   .wahl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .wahl button { margin: 0; background: var(--bg); color: var(--text); border: 1px solid var(--rand); font-weight: 400; }
@@ -68,7 +85,14 @@
     <section id="du" hidden>
       <h2>Du</h2>
       <div id="rolle-titel" class="leer"></div>
-      <div id="rolle" class="rolle"></div>
+      <button id="karte" class="karte" type="button" disabled aria-label="Deine Karte (verdeckt)">
+        <div class="karte-innen">
+          <div class="karte-seite"><img src="karten/rueckseite.jpg" alt="Kartenrückseite"></div>
+          <div class="karte-seite karte-vorne" id="karte-vorne"></div>
+        </div>
+      </button>
+      <p id="karte-tipp" class="karte-tipp">Deine Karte liegt verdeckt vor dir.</p>
+      <div id="rolle" class="rolle" hidden></div>
       <ul id="wissen" class="wissen"></ul>
       <div id="zug" style="margin-top:16px"></div>
     </section>
@@ -217,6 +241,50 @@ for (const id of ["basis", "modell"]) {
   $(id).addEventListener("input", () => { $("anbieter").value = "eigene"; });
 }
 
+// --- Deine Karte ----------------------------------------------------------
+// Bilddateien heißen wie die Rolle, klein und ohne Umlaute: „Räuber“ → karten/raeuber.jpg.
+const UMLAUTE = { "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss" };
+let kartenRolle = null, angesehen = false;
+
+// Geheimwissen und Zug verraten die Karte – sie erscheinen erst, wenn du sie einmal angesehen hast.
+function verdecktesAusblenden() {
+  const verdeckt = Boolean(kartenRolle) && !angesehen;
+  $("wissen").hidden = verdeckt;
+  $("zug").hidden = verdeckt;
+}
+
+function kartenDatei(rolle) {
+  return `karten/${rolle.toLowerCase().replace(/[äöüß]/g, (z) => UMLAUTE[z]).replace(/[^a-z]/g, "")}.jpg`;
+}
+
+function karteZeigen(rolle) {
+  if (rolle === kartenRolle) return;
+  kartenRolle = rolle;
+  angesehen = false;
+  verdecktesAusblenden();
+  const karte = $("karte"), vorne = $("karte-vorne");
+  karte.classList.remove("offen");
+  karte.disabled = !rolle;
+  karte.setAttribute("aria-label", "Deine Karte (verdeckt)");
+  $("rolle").hidden = true;
+  vorne.replaceChildren();
+  if (!rolle) { $("karte-tipp").textContent = "Deine Karte liegt verdeckt vor dir."; return; }
+  $("karte-tipp").textContent = "Klicke auf die Karte, um sie anzusehen.";
+  const bild = Object.assign(document.createElement("img"), { src: kartenDatei(rolle), alt: rolle });
+  // Gibt es (noch) kein Bild für diese Rolle, zeigen wir eine schlichte Karte mit dem Namen.
+  bild.addEventListener("error", () => vorne.replaceChildren(
+    Object.assign(document.createElement("div"), { className: "karte-ersatz", textContent: rolle })));
+  vorne.append(bild);
+}
+
+$("karte").addEventListener("click", () => {
+  const offen = $("karte").classList.toggle("offen");
+  $("karte").setAttribute("aria-label", offen ? `Deine Karte: ${kartenRolle}` : "Deine Karte (verdeckt)");
+  $("karte-tipp").textContent = offen ? "Klicke noch einmal, um sie wieder umzudrehen." : "Klicke auf die Karte, um sie anzusehen.";
+  $("rolle").hidden = !offen;
+  if (offen) { angesehen = true; verdecktesAusblenden(); }
+});
+
 // --- Formular -------------------------------------------------------------
 const GRENZEN = { vollmondnacht: [3, 10], klassisch: [5, 7] };
 
@@ -252,6 +320,7 @@ $("neu").addEventListener("submit", async (e) => {
   const antwort = await api("/api/neu", daten);
   if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
   anzahl = 0; letztePhase = null; frageJson = null;
+  karteZeigen(null);
   $("tisch").replaceChildren();
   $("banner").replaceChildren();
   abfragen();
@@ -280,6 +349,7 @@ function zeichnen(z) {
   if (z.frage) {
     $("rolle-titel").textContent = z.frage.rolle_titel;
     $("rolle").textContent = z.frage.rolle;
+    karteZeigen(z.frage.rolle);
   }
   $("wissen").replaceChildren(...z.geheimwissen.map((w) => Object.assign(document.createElement("li"), { textContent: w })));
 

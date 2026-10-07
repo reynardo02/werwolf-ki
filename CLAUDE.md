@@ -66,6 +66,9 @@ Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server
 getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
   Anbieter-Auswahl im LLM-Zugang (OpenAI mit gpt-5.4 als Standard, Gemini, eigene); OpenAI schickt temperature=1.
+Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten/rueckseite.jpg) und dreht sich per Klick um.
+  Bilder heißen wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins, erscheint eine schlichte Karte mit dem Namen.
+  Geheimwissen und Zug erscheinen erst, wenn du die Karte einmal angesehen hast.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
@@ -225,4 +228,12 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   dieser Karte“, auch bei „Test“). Neue Regel in system.txt: Die Seherin ist vor dem Räuber dran, Rauben nimmt niemandem
   seine Nachtaktion. LUEGEN verlangt, bei der zuerst behaupteten Startkarte zu bleiben (macht die Wölfe stärker).
   Kartenzählen bewusst nicht als Hinweis (Serie 2).
+- Serie 18, gpt-5.4, mit diesen Fixes, Seeds 920519–920538: 45,4 % (Zufall 25,9 %), Start-Werwölfe 44,4 %, Dorf gewinnt 8/20
+  (Serie 17: 10/20 – im Rauschen, die Wölfe sind durch LUEGEN stärker). Wölfe bleiben fast immer bei ihrer Lüge (nur 532 wechselt
+  noch, C erkennt es sofort); NICHT_VERRATEN wirkt (528, 533). Die Seherin-Regel greift nur teilweise (522 gewonnen, 530 verloren).
+  12 Niederlagen: 4× 50:50 bei doppelter Behauptung, weil der Wolf hart bleibt (519, 528, 531, 537), 4× Herde gegen Ehrliche ohne
+  Widerspruch, meist gegen Tauscher („bequem“, „Chaos“; 524, 526, 529, 536), 2× Regel zu Beraubten/Vertauschten nicht angewendet,
+  obwohl sie im Prompt steht (527: vertauschte „Schlaflose“ sah angeblich ihre Startkarte; 530: beraubte Seherin), 1× Kartenweg
+  (523), 1× perfekte Täuschung (534). Die Prompt-Phase ist damit abgeschlossen: Die restlichen Regelfehler betreffen Regeln, die
+  schon zwei- bis dreimal im Prompt stehen, der Rest sind echte Spielentscheidungen.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.

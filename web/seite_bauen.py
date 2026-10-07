@@ -4,6 +4,7 @@
 
 Inhalt des Ordners:
   index.html, pyodide-backend.js   die Spielseite und ihr Server-Ersatz
+  karten/                          die Kartenbilder
   werwolf-ki.zip                   unser Python-Code (core/, werwolf/, web/) für Pyodide
   pyodide/                         Python für den Browser (aus dem npm-Paket „pyodide“)
 
@@ -46,6 +47,7 @@ def bauen(ziel: Path, pyodide: Path) -> None:
         shutil.rmtree(ziel)
     (ziel / "pyodide").mkdir(parents=True)
     shutil.copy(STATIC / "pyodide-backend.js", ziel / "pyodide-backend.js")
+    shutil.copytree(STATIC / "karten", ziel / "karten")
     # Markierung: Diese Fassung hat keinen Python-Server, also gleich Python im Browser laden.
     seite = (STATIC / "index.html").read_text(encoding="utf-8")
     markiert = seite.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="werwolf-modus" content="browser">', 1)

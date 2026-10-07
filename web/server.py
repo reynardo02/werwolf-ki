@@ -2,6 +2,7 @@
 
 Adressen (alle Antworten sind JSON, außer der Startseite):
   GET  /                      die Spielseite (static/index.html)
+  GET  /karten/werwolf.jpg    Kartenbilder (static/karten/)
   GET  /api/optionen?spieler=7    Platz-Namen und Vollmondnacht-Szenarien für diese Spielerzahl
   POST /api/neu               neue Partie: {"regeln", "spieler", "llm", "szenario"}
   GET  /api/zustand?seit=0    Stand der Partie, nur Ereignisse ab Nummer `seit`
@@ -12,6 +13,7 @@ Der Server lauscht nur auf 127.0.0.1, ist also nur auf deinem eigenen Rechner er
 
 import argparse
 import json
+import re
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +25,9 @@ from web.einstellungen import Fehler, einstellungen_pruefen, optionen
 from web.sitzung import Sitzung
 
 STARTSEITE = Path(__file__).parent / "static" / "index.html"
+KARTEN = Path(__file__).parent / "static" / "karten"
+# Nur einfache Dateinamen, damit niemand mit „../“ andere Dateien abrufen kann.
+KARTEN_PFAD = re.compile(r"/karten/([a-z]+\.jpg)")
 
 
 def sitzung_aus_anfrage(daten: dict[str, Any], ordner: Path | None = None) -> Sitzung:
@@ -64,6 +69,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(inhalt)))
+            self.end_headers()
+            self.wfile.write(inhalt)
+        elif (treffer := KARTEN_PFAD.fullmatch(url.path)) and (KARTEN / treffer[1]).is_file():
+            inhalt = (KARTEN / treffer[1]).read_bytes()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(inhalt)))
+            self.send_header("Cache-Control", "max-age=3600")
             self.end_headers()
             self.wfile.write(inhalt)
         elif url.path == "/favicon.ico":

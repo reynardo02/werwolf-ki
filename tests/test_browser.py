@@ -122,6 +122,7 @@ def test_seite_bauen(tmp_path) -> None:
     seite = (ziel / "index.html").read_text(encoding="utf-8")
     assert '<meta name="werwolf-modus" content="browser">' in seite
     assert (ziel / "pyodide-backend.js").exists() and (ziel / ".nojekyll").exists()
+    assert (ziel / "karten" / "rueckseite.jpg").exists() and (ziel / "karten" / "werwolf.jpg").exists()
     assert all((ziel / "pyodide" / d).exists() for d in PYODIDE_DATEIEN)
     namen = zipfile.ZipFile(ziel / "werwolf-ki.zip").namelist()
     assert "web/browser.py" in namen and "werwolf/prompts/persoenlichkeiten.txt" in namen

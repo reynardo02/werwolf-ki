@@ -116,6 +116,15 @@ def test_server_startseite_und_optionen(server: str) -> None:
     assert anfrage(server + "/gibtsnicht")[0] == 404
 
 
+def test_server_liefert_kartenbilder(server: str) -> None:
+    with urllib.request.urlopen(server + "/karten/rueckseite.jpg", timeout=5) as antwort:
+        assert antwort.status == 200 and antwort.headers["Content-Type"] == "image/jpeg"
+        assert antwort.read(3) == b"\xff\xd8\xff"  # JPEG-Anfang
+    # Fehlende Bilder und Pfade außerhalb von karten/ gibt es nicht.
+    assert anfrage(server + "/karten/gibtsnicht.jpg")[0] == 404
+    assert anfrage(server + "/karten/..%2Fserver.py")[0] == 404
+
+
 @pytest.mark.parametrize("falsch", [
     {"regeln": "schach"},
     {"regeln": "klassisch", "spieler": 9},
