@@ -81,6 +81,12 @@ Zusatz: Prompt Caching (OpenAI cacht automatisch gleiche Anfänge ab 1024 Tokens
   längeren Reden eher mehr. Gemessen wird `gecachte_tokens` (Statistik, Log, Protokoll, Auswertung).
   Kein `prompt_cache_key`: Bei unserem Tempo hilft er kaum, und andere Anbieter könnten das Feld ablehnen.
 
+Zusatz: Mehrere Menschen an einem Gerät (bis 5, Pass and Play, Server und GitHub Pages). Einstellungen haben `menschen`
+  statt `ich` (altes Format wird weiter angenommen), alle menschlichen Plätze teilen sich ein Agent-Objekt, jede Frage nennt
+  `wer`. Zustand mit `karten`, `geheimwissen` und `gewonnen` pro Mensch. Im Browser: Vorhang „Gib das Gerät an …“ vor jeder
+  Kartenansicht und jedem Zug, danach ist alles Geheime wieder weg (`ansicht()` in index.html entscheidet Vorhang/Karte/Tisch).
+  Auswertung: Gruppe „mit N Menschen“, solche Partien zählen nicht zur eigenen Bilanz (`--mensch`).
+
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
 - Serie 1, Ausgangspunkt: 27,3 %, Dorf gewinnt 2/10.
