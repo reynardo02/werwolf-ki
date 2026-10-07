@@ -265,8 +265,6 @@ function zugangLaden() {
     const z = JSON.parse(localStorage.getItem("werwolf-zugang") || "{}");
     // „15“ war der alte Standard fürs Tempolimit – gemerkt heißt das nicht „gewollt“.
     if (z.tempo === "15") delete z.tempo;
-    // Ebenso gpt-5.4-mini: war bis zur Umstellung auf gpt-5.4 nur die Vorlage.
-    if (z.anbieter === "openai" && z.modell === "gpt-5.4-mini") delete z.modell;
     // Ältere Speicherstände kennen keinen Anbieter: aus der Adresse ableiten.
     if (!z.anbieter && z.basis) {
       z.anbieter = Object.keys(ANBIETER).find((a) => ANBIETER[a].basis === z.basis) || "eigene";
