@@ -214,4 +214,15 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   gelesen (520), 1× Kartenweg übersehen (523), 2× Herde gegen stillen Dorfbewohner (528, 529), 2× starke Wolf-Täuschung (527, 534).
 - Fix danach: DORF_STIMME definiert „Dorf-Karte“ (alles außer Werwolf, Günstling, Gerber), sagt, dass ein vertauschter Lügner
   seine Werwolf-Karte nicht mehr hat, und dass ein späterer Wechsel der Startkarte eine Lüge ist.
+- Serie 17, gpt-5.4, mit erweitertem DORF_STIMME (A1/A2/C), Seeds 920519–920538: 51,9 % (Zufall 25,9 %), Start-Werwölfe
+  48,1 %, Dorf gewinnt 10/20 (Serie 16: 11/20 – im Rauschen). C wirkt: In 519 und 529 begründen fast alle ihre Stimme mit dem
+  Startkarten-Wechsel des Wolfs. 10 Niederlagen: 2× Lügner erkannt, aber seine Werwolf-Karte war weitergetauscht (526, 536 –
+  Dario schreibt selbst „Ben hat meine Dorfkarte“ und stimmt trotzdem gegen Ben), 1× beraubte Seherin gilt als widerlegt, weil
+  der Räuber bei ihr die Seherin sah (530, fast auch 522), 1× Wechsel als „Test“ entschuldigt (531), 2× Karten nicht gezählt
+  (520: nur der Betrunkene konnte Wolf sein; 524: vier Dorfbewohner-Claims), 2× Herde ohne Widerspruch (528, 532),
+  2× starke Wolf-Täuschung (527, 537).
+- Fix danach: Lüge und Kartenweg in einem Satz in DORF_STIMME („Wer lügt, hatte wahrscheinlich die Werwolf-Karte – folge dann
+  dieser Karte“, auch bei „Test“). Neue Regel in system.txt: Die Seherin ist vor dem Räuber dran, Rauben nimmt niemandem
+  seine Nachtaktion. LUEGEN verlangt, bei der zuerst behaupteten Startkarte zu bleiben (macht die Wölfe stärker).
+  Kartenzählen bewusst nicht als Hinweis (Serie 2).
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.

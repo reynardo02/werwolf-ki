@@ -276,8 +276,25 @@ def test_dorf_stimmt_nicht_gegen_eine_dorf_karte() -> None:
         replace(zug, rolle=Rolle.RAEUBER, bekannte_karte=Rolle.WERWOLF))
     # Serie 16: „Dorf-Karte“ ist definiert, Kartenweg geht vor Lüge, Startkarten-Wechsel ist eine Lüge.
     assert "jede Karte außer Werwolf, Günstling und Gerber" in DORF_STIMME
-    assert "hat er seine Werwolf-Karte nicht mehr" in DORF_STIMME
-    assert "Wer seine Startkarte später ändert" in DORF_STIMME
+    assert "Folge dann dieser Karte" in DORF_STIMME
+    assert "nicht gegen den Lügner" in DORF_STIMME
+    assert "„Test“" in DORF_STIMME
+
+
+def test_luegner_bleiben_bei_ihrer_ersten_behauptung() -> None:
+    # Serie 17: Wölfe wechselten ihre behauptete Startkarte und verrieten sich damit.
+    from werwolf.vollmondnacht.llm_spieler import LUEGEN
+
+    assert "Bleib bei der Startkarte, die du zuerst behauptet hast" in LUEGEN
+
+
+def test_regeln_beraubte_seherin_hat_schon_gesehen() -> None:
+    # Serie 17, Seed 920530: Das Dorf hielt die beraubte Seherin für widerlegt und tötete sie.
+    from pathlib import Path
+
+    system = (Path(__file__).parent.parent / "werwolf/vollmondnacht/prompts/system.txt").read_text(encoding="utf-8")
+    assert "Raubt der Räuber die Seherin, hat sie ihren Blick schon" in system
+    assert "nimmt niemandem seine Nachtaktion" in system
 
 
 def test_regeln_beraubte_nennen_zu_recht_ihre_startkarte() -> None:

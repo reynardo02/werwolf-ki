@@ -21,9 +21,13 @@ from werwolf.vollmondnacht.rollen import Partei, Rolle, faehigkeiten_text
 
 # Wer lügen darf, hängt von der Partei ab: Werwölfe und Gerber profitieren vom Lügen,
 # das Dorf von Ehrlichkeit – nur so lassen sich die nächtlichen Kartentausche aufklären.
+# Serie 17 (920519, 920529, 920531): Wölfe wechselten mitten in der Diskussion ihre behauptete
+# Startkarte (531: „ich habe euch getestet“) – ein ehrlicher Spieler tut das nie, das verrät sie.
 LUEGEN = (
     " Du darfst lügen und jede Rolle behaupten. Behauptest du eine Rolle, erfinde auch passende "
-    "Einzelheiten (wessen Karte, welche Karten), so wie sie diese Rolle wirklich wüsste."
+    "Einzelheiten (wessen Karte, welche Karten), so wie sie diese Rolle wirklich wüsste. "
+    "Bleib bei der Startkarte, die du zuerst behauptet hast, auch unter Druck – wer seine "
+    "Startkarte später ändert, verrät sich als Lügner."
 )
 EHRLICH = (
     " Das Dorf gewinnt durch Ehrlichkeit: Sag offen, welche Karte du zu Beginn hattest und "
@@ -126,15 +130,18 @@ AUFGABEN = {
 
 # Serie 15 (920520, 920529): Das Dorf rechnete einem ehrlichen, beraubten Spieler selbst die
 # Räuber-Karte zu und stimmte trotzdem gegen ihn, „weil er nur seine Startkarte nennt“.
-# Serie 16: 920520 – „Dorf-Karte“ wurde als „Dorfbewohner-Karte“ gelesen (A1); 920523 – ein vertauschter
-# Lügner starb statt des neuen Kartenbesitzers (A2); 920519/526/532 – wer erst „Dorfbewohner“ und später
-# eine andere Startkarte nannte, fiel niemandem auf (C).
+# Serie 16: 920520 – „Dorf-Karte“ wurde als „Dorfbewohner-Karte“ gelesen; 920519/526/532 – wer erst
+# „Dorfbewohner“ und später eine andere Startkarte nannte, fiel niemandem auf.
+# Serie 17: Der Lügner wurde erkannt, aber seine Werwolf-Karte war weitergetauscht (920526, 920536) –
+# als getrennte Sätze nahm das Modell nur „Lügner = Wolf“. Daher Lüge und Kartenweg in einem Satz.
+# 920531: Ein Wolf entschuldigte seinen Wechsel als „Test“, das Dorf akzeptierte das.
 DORF_STIMME = (
     " Zeige auf den, der jetzt am wahrscheinlichsten eine Werwolf-Karte hat – nicht auf jemanden, "
     "dem du selbst eine Dorf-Karte zurechnest (jede Karte außer Werwolf, Günstling und Gerber, also "
-    "auch Räuber, Seherin oder Unruhestifterin). Wurde ein Lügner nachweislich beraubt oder vertauscht, "
-    "hat er seine Werwolf-Karte nicht mehr – stimme gegen den, der sie jetzt hat. Ehrliche Spieler "
-    "nennen von Anfang an ihre Startkarte: Wer seine Startkarte später ändert, hat mindestens einmal gelogen."
+    "auch Räuber, Seherin oder Unruhestifterin). Wer lügt – z. B. seine Startkarte später ändert, "
+    "auch wenn er es „Test“ nennt –, hatte zu Beginn wahrscheinlich die Werwolf-Karte. Folge dann "
+    "dieser Karte: Wurde er danach beraubt oder vertauscht, stimme gegen den, der sie jetzt hat, "
+    "nicht gegen den Lügner."
 )
 
 # Manche Spieler (vor allem Werwölfe) redeten herum, ohne je eine Karte zu nennen.

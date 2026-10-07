@@ -16,6 +16,8 @@ Regeln:
   wurde, sieht am Ende die Karte, die sie bekommen hat.
 - Wer nachts eine Karte ansieht, sieht sie so, wie sie in diesem Moment ist. Was danach getauscht
   wird, ändert daran nichts (z. B. sieht die Seherin eine Karte, bevor der Räuber sie nimmt).
+- Die Seherin ist vor dem Räuber dran: Raubt der Räuber die Seherin, hat sie ihren Blick schon
+  gemacht – sein Raub bestätigt sie. Beraubt oder vertauscht zu werden nimmt niemandem seine Nachtaktion.
 - Parteien: Das Werwolfsrudel (Werwölfe und Günstling) gewinnt, wenn kein Werwolf stirbt.
   Die Dorfgemeinschaft gewinnt, wenn mindestens ein Werwolf stirbt. Ist kein Spieler
   ein Werwolf, gewinnt das Dorf nur, wenn niemand stirbt. Der Gerber gewinnt nur,
