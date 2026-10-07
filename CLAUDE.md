@@ -193,4 +193,8 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   offen – das bringt dem Dorf keine Information. Räuber und Unruhestifterin müssen jetzt handeln (kein Tool nichts_tun
   mehr, auch die Rollenbeschreibung sagt nicht mehr „darf“). Kartenverteilung und Mitte bleiben bei gleichem Seed gleich
   (LLM-Serien also weiter vergleichbar), nur Partien mit MockAgent laufen anders.
+- Fix nach Serie 15, Seed 920520 (gpt-5.4): Kein Werwolf am Tisch, alle ehrlich. Das Dorf verrechnete sich beim Kartenweg
+  (Anna habe jetzt den Betrunkenen – den hatte aber die Räuberin geraubt) und tötete Anna trotzdem, obwohl es ihr selbst
+  eine Dorf-Karte zurechnete. Der Betrunkene, der einen Werwolf aus der Mitte gezogen hatte, blieb unbeachtet. KARTENWEG
+  sagt jetzt: Wer laut Kartenkette eine Dorf-Karte hat, ist kein Werwolf; der Betrunkene kann ahnungslos Werwolf sein.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
