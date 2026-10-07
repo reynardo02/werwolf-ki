@@ -2,6 +2,7 @@
 
 import random
 from collections.abc import Callable
+from dataclasses import replace
 
 import pytest
 
@@ -189,12 +190,19 @@ def test_partie_nur_mit_llm_spielern() -> None:
 
 
 def test_namen_werden_gemischt() -> None:
-    """Gegen Positions-Verzerrung: Die Reihenfolge der Ziele ist nicht immer gleich."""
-    spieler = LLMSpieler(FakeClient(), rng=random.Random(1))
+    """Gegen Positions-Verzerrung: Jeder Spieler sieht die Ziele in einer anderen Reihenfolge,
+    aber immer in derselben – sonst ändert sich der Anfang der Anfrage und der Cache greift nicht."""
     zug = Zug(
         ich="Anna", rolle=Rolle.DORFBEWOHNER, runde=1, phase=Phase.ABSTIMMUNG,
         erlaubte_tools=["abstimmen"], lebende=NAMEN, geheimwissen=[], notizen=[], ereignisse=[],
     )
-    erste = {spieler.tools(zug)[0].parameter["ziel"]["enum"][0] for _ in range(30)}
+    spieler = LLMSpieler(FakeClient(), rng=random.Random(1))
+    reihenfolge = spieler.tools(zug)[0].parameter["ziel"]["enum"]
+    assert all(spieler.tools(zug)[0].parameter["ziel"]["enum"] == reihenfolge for _ in range(5))
+    assert sorted(reihenfolge) == sorted(NAMEN[1:])
+    # Weniger Lebende: gleiche Reihenfolge, nur ohne die Toten.
+    weniger = replace(zug, lebende=NAMEN[:4])
+    assert spieler.tools(weniger)[0].parameter["ziel"]["enum"] == [n for n in reihenfolge if n in NAMEN[:4]]
+    erste = {LLMSpieler(FakeClient(), rng=random.Random(i)).tools(zug)[0].parameter["ziel"]["enum"][0]
+             for i in range(30)}
     assert len(erste) > 1
-    assert sorted(spieler.tools(zug)[0].parameter["ziel"]["enum"]) == sorted(NAMEN[1:])

@@ -89,6 +89,7 @@ class LLMSpieler:
         # Zum Mischen von Namenslisten (siehe gemischt). Eigener Generator, damit
         # die Partie selbst bei gleichem Seed gleich verteilt wird.
         self.rng = rng or random.Random()
+        self._platz: dict[str, float] = {}  # Name -> fester Zufallswert fürs Mischen
         # Wie viele Runden das LLM komplett sieht. Ältere Diskussionen kennt es
         # nur noch aus seinen eigenen Notizen.
         self.volle_runden = volle_runden
@@ -133,12 +134,18 @@ class LLMSpieler:
         return tool_schemas(zug.erlaubte_tools, self.gemischt(ziele))
 
     def gemischt(self, namen: list[str]) -> list[str]:
-        """Namen in zufälliger Reihenfolge.
+        """Namen in zufälliger, aber für diesen Spieler fester Reihenfolge.
 
         Kleine Modelle wählen auffällig oft die erste Option einer Liste
         (Positions-Verzerrung). Gemischt hat kein Spieler einen Platzvorteil.
+        Jeder Spieler würfelt die Reihenfolge nur einmal: So bleibt der Anfang
+        seiner Anfragen von Zug zu Zug gleich, und der Anbieter kann ihn cachen
+        (Prompt Caching, billiger). Neu gemischt bei jedem Aufruf ginge das nicht.
         """
-        return self.rng.sample(namen, len(namen))
+        for name in namen:
+            if name not in self._platz:
+                self._platz[name] = self.rng.random()
+        return sorted(namen, key=self._platz.__getitem__)
 
     def handeln(self, zug: Zug) -> Aktion:
         try:

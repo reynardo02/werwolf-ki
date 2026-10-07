@@ -82,6 +82,16 @@ def test_tool_call_wird_gelesen() -> None:
     assert client.statistik.aufrufe == 1
     assert client.statistik.input_tokens == 100
     assert client.statistik.output_tokens == 20
+    assert client.statistik.gecachte_tokens == 0  # Antwort ohne Cache-Angabe
+
+
+def test_gecachte_tokens_werden_gezaehlt() -> None:
+    daten = antwort_json([tool_call("abstimmen", '{"ziel": "Ben"}')])
+    daten["usage"]["prompt_tokens_details"] = {"cached_tokens": 64}
+    client, _ = client_mit(lambda r: httpx.Response(200, json=daten))
+    client.anfragen("S", "N", [TOOL])
+    client.anfragen("S", "N", [TOOL])
+    assert client.statistik.gecachte_tokens == 128
 
 
 @pytest.mark.parametrize("tool_calls", [None, [tool_call("abstimmen", "{kaputt")]])

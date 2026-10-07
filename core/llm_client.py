@@ -56,6 +56,7 @@ class Antwort:
 class Statistik:
     aufrufe: int = 0
     input_tokens: int = 0
+    gecachte_tokens: int = 0  # Teil der input_tokens, den der Anbieter aus dem Cache billiger berechnet
     output_tokens: int = 0
     fehler: int = 0  # Aufrufe, bei denen der Anbieter einen Fehler gemeldet hat
     ohne_tool_call: int = 0  # Antworten ohne (lesbaren) Tool-Call
@@ -133,6 +134,9 @@ class OpenAIKompatiblerClient:
         if antwort.usage:
             self.statistik.input_tokens += antwort.usage.prompt_tokens or 0
             self.statistik.output_tokens += antwort.usage.completion_tokens or 0
+            # Nicht jeder Anbieter meldet den Cache – dann bleibt es bei 0.
+            details = getattr(antwort.usage, "prompt_tokens_details", None)
+            self.statistik.gecachte_tokens += getattr(details, "cached_tokens", None) or 0
 
         if not antwort.choices:
             self.statistik.ohne_tool_call += 1

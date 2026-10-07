@@ -76,6 +76,8 @@ class VollmondAuswertung:
     partei_gewechselt: int = 0
     zufallsaktionen: int = 0
     api_aufrufe: int = 0
+    input_tokens: int = 0
+    gecachte_tokens: int = 0
     gruppen: dict[str, "VollmondAuswertung"] = field(default_factory=dict)
 
     @property
@@ -88,6 +90,8 @@ def _zaehlen(a: VollmondAuswertung, p: VollmondPartie) -> None:
     a.zufallsaktionen += p.zufallsaktionen
     if p.api:
         a.api_aufrufe += p.api.get("aufrufe", 0)
+        a.input_tokens += p.api.get("input_tokens", 0)
+        a.gecachte_tokens += p.api.get("gecachte_tokens", 0)  # ältere Logs: 0
     if p.gewinner is None:
         a.abgebrochen += 1
         return
@@ -147,6 +151,8 @@ def bericht(a: VollmondAuswertung, titel: str) -> str:
     ]
     if a.api_aufrufe:
         z.append(_zeile("API-Aufrufe pro Partie", f"{a.api_aufrufe / a.partien:.0f}"))
+    if a.gecachte_tokens:
+        z.append(_zeile("Input-Tokens aus dem Cache", f"{a.gecachte_tokens / a.input_tokens:.0%}"))
     return "\n".join(z)
 
 

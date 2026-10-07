@@ -73,6 +73,11 @@ Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten
 Zusatz: Handy und iPad – während der Partie füllt die Seite genau den Bildschirm (Höhe aus visualViewport, schrumpft mit
   der Tastatur). Nur der Chat scrollt, dein Zug steht fest darunter und der Chat springt nur nach unten, wenn du schon unten warst.
   Bis 900 px Breite liegen Karte und „Neue Partie“ in einem Blatt, das der Knopf oben rechts öffnet. Kein Autofokus aufs Textfeld.
+Zusatz: Prompt Caching (OpenAI cacht automatisch gleiche Anfänge ab 1024 Tokens, gecachte Eingabe kostet ~1/10).
+  Namenslisten werden pro Spieler nur einmal gemischt (`gemischt` in werwolf/llm_spieler.py), damit der Anfang der
+  Anfragen gleich bleibt. Geschätzt (Fake-Partien) steigt der cachebare Anteil von 5 % auf 25 %, echte Partien mit
+  längeren Reden eher mehr. Gemessen wird `gecachte_tokens` (Statistik, Log, Protokoll, Auswertung).
+  Kein `prompt_cache_key`: Bei unserem Tempo hilft er kaum, und andere Anbieter könnten das Feld ablehnen.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
