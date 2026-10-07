@@ -206,4 +206,12 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix danach: Abstimmungs-Aufgabe fürs Dorf sagt „nicht auf jemanden, dem du selbst eine Dorf-Karte zurechnest“ (DORF_STIMME
   in vollmondnacht/llm_spieler.py). Neue Regel in system.txt: Beraubte und Vertauschte nennen zu Recht ihre Startkarte, der
   Blick des Räubers bestätigt sie; eine vorher vertauschte Schlaflose sieht die Karte, die sie bekommen hat.
+- Serie 16, gpt-5.4, mit DORF_STIMME und der Beraubten-Regel, Seeds 920519–920538: 59,3 % (Zufall 25,9 %), Start-Werwölfe
+  49,1 %, Dorf gewinnt 11/20 (Serie 15: 11/20). Regel-Fix wirkt: In 537 begründet Anna ihre Stimme damit, dass der vertauschte
+  Ben zu Recht „Seherin“ sagt – Dorf gewinnt (Serie 15 verloren); 533, 536, 538 ebenfalls gekippt zum Sieg. 527/529 hatten
+  andere Nächte, prüfen den Fix nicht. 9 Niederlagen: 3× später Startkarten-Wechsel übersehen („Dorfbewohner“, dann Seherin/
+  Räuberin/Unruhestifterin; 519, 526, 532 – zweimal stirbt dafür der ehrliche Betrunkene), 1× „Dorf-Karte“ als Dorfbewohner-Karte
+  gelesen (520), 1× Kartenweg übersehen (523), 2× Herde gegen stillen Dorfbewohner (528, 529), 2× starke Wolf-Täuschung (527, 534).
+- Fix danach: DORF_STIMME definiert „Dorf-Karte“ (alles außer Werwolf, Günstling, Gerber), sagt, dass ein vertauschter Lügner
+  seine Werwolf-Karte nicht mehr hat, und dass ein späterer Wechsel der Startkarte eine Lüge ist.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
