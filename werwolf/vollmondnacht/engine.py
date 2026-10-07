@@ -22,7 +22,6 @@ SPIELER_ANSEHEN = "spieler_ansehen"  # Seherin
 MITTE_ANSEHEN = "mitte_ansehen"  # Seherin: zwei Karten aus der Mitte
 RAUBEN = "rauben"  # Räuber
 VERTAUSCHEN = "vertauschen"  # Unruhestifterin
-NICHTS_TUN = "nichts_tun"  # für freiwillige Aktionen
 
 # Rollen, deren Aktion die Doppelgängerin sofort ausführt.
 SOFORT_AKTIONEN = (Rolle.SEHERIN, Rolle.RAEUBER, Rolle.UNRUHESTIFTERIN, Rolle.BETRUNKENER)
@@ -219,12 +218,10 @@ class VollmondEngine:
             self._nachtaktion(seherin, MITTE_ANSEHEN, ergebnis=", ".join(gesehen))
 
     def _raeuber(self, raeuber: Spieler) -> None:
-        optionen = {RAUBEN: {"ziel": self._andere(raeuber)}, NICHTS_TUN: {}}
+        # Kein „nichts tun“: Eine Unruhestifterin, die nichts vertauscht hatte, wirkte in einer
+        # eigenen Partie (696964) nur verdächtig und brachte dem Dorf keine Information.
+        optionen = {RAUBEN: {"ziel": self._andere(raeuber)}}
         aktion = self._fragen(raeuber, Phase.NACHT, optionen)
-        if aktion.tool == NICHTS_TUN:
-            raeuber.wissen.append("Du hast nichts geraubt.")
-            self._nachtaktion(raeuber, NICHTS_TUN)
-            return
         ziel = aktion.parameter["ziel"]
         self._tauschen(raeuber.name, ziel)
         neu = self.karten[raeuber.name]
@@ -260,12 +257,8 @@ class VollmondEngine:
 
     def _unruhestifterin(self, us: Spieler) -> None:
         andere = self._andere(us)
-        optionen = {VERTAUSCHEN: {"ziel1": andere, "ziel2": andere}, NICHTS_TUN: {}}
+        optionen = {VERTAUSCHEN: {"ziel1": andere, "ziel2": andere}}
         aktion = self._fragen(us, Phase.NACHT, optionen)
-        if aktion.tool == NICHTS_TUN:
-            us.wissen.append("Du hast keine Karten vertauscht.")
-            self._nachtaktion(us, NICHTS_TUN)
-            return
         a, b = aktion.parameter["ziel1"], aktion.parameter["ziel2"]
         self._tauschen(a, b)
         us.wissen.append(f"Du hast die Karten von {a} und {b} vertauscht, ohne sie anzusehen.")
@@ -419,8 +412,6 @@ class VollmondEngine:
         return None
 
     def _zufallsaktion(self, optionen: Optionen) -> Aktion:
-        if NICHTS_TUN in optionen:
-            return Aktion(NICHTS_TUN)
         tool = next(iter(optionen))
         if tool == SPRECHEN:
             return Aktion(tool, {"text": "(schweigt)"})

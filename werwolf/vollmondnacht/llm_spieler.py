@@ -13,7 +13,6 @@ from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Ereignis, Zug
 from werwolf.vollmondnacht.engine import (
     MITTE_ANSEHEN,
     NACHAHMEN,
-    NICHTS_TUN,
     RAUBEN,
     SPIELER_ANSEHEN,
     VERTAUSCHEN,
@@ -101,12 +100,12 @@ AUFGABEN = {
         "oder zwei Karten aus der Mitte (Tool mitte_ansehen)."
     ),
     RAUBEN: (
-        "Nacht: Als Räuber darfst du deine Karte mit der eines Mitspielers tauschen und dir die neue "
-        "ansehen (Tool rauben) – oder nichts tun (Tool nichts_tun)."
+        "Nacht: Als Räuber tauschst du deine Karte mit der eines Mitspielers und siehst dir die neue "
+        "an (Tool rauben)."
     ),
     VERTAUSCHEN: (
-        "Nacht: Als Unruhestifterin darfst du die Karten von zwei anderen Spielern vertauschen, "
-        "ohne sie anzusehen (Tool vertauschen) – oder nichts tun (Tool nichts_tun)."
+        "Nacht: Als Unruhestifterin vertauschst du die Karten von zwei anderen Spielern, "
+        "ohne sie anzusehen (Tool vertauschen)."
     ),
     SPRECHEN: (
         "Diskussion: Du bist dran. Geh auf das Gesagte ein: Behaupte eine Rolle, teile (oder erfinde) "
@@ -152,7 +151,6 @@ BESCHREIBUNGEN = {
     MITTE_ANSEHEN: "Sieh dir zwei der drei Karten in der Mitte an.",
     RAUBEN: "Tausche deine Karte mit der eines Mitspielers und sieh dir deine neue Karte an.",
     VERTAUSCHEN: "Vertausche die Karten von zwei anderen Spielern, ohne sie anzusehen.",
-    NICHTS_TUN: "Verzichte auf deine Nachtaktion.",
     SPRECHEN: "Sag etwas in der Diskussion. Alle hören es.",
     ABSTIMMEN: "Zeige auf den Mitspieler, der sterben soll.",
 }

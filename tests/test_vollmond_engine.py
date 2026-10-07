@@ -7,7 +7,6 @@ from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Aktion, Zug
 from werwolf.vollmondnacht.engine import (
     MITTE_ANSEHEN,
     NACHAHMEN,
-    NICHTS_TUN,
     RAUBEN,
     SPIELER_ANSEHEN,
     VERTAUSCHEN,
@@ -33,7 +32,8 @@ class Skript:
             return Aktion(SPRECHEN, {"text": self.text})
         if tool == ABSTIMMEN:
             return Aktion(ABSTIMMEN, {"ziel": self.stimme})
-        return self.nacht or Aktion(NICHTS_TUN)
+        # Ohne Vorgabe ungültig: Die Engine wählt dann eine Zufallsaktion.
+        return self.nacht or Aktion("")
 
 
 def engine(verteilung: dict[str, Rolle], mitte: list[Rolle], agenten: dict[str, Skript]) -> VollmondEngine:
@@ -124,8 +124,8 @@ def test_unruhestifterin_braucht_zwei_verschiedene_ziele() -> None:
     e = engine(verteilung, [R.DORFBEWOHNER, R.SEHERIN, R.RAEUBER], agenten)
     e.spielen()
     assert agenten["Anna"].zuege[1].hinweis == "Du musst zwei verschiedene Spieler wählen."
-    # Danach Zufallsaktion: bei freiwilligen Aktionen „nichts tun“.
-    assert e.karten == verteilung
+    # Danach Zufallsaktion: Nichtstun gibt es nicht, also vertauscht sie die beiden anderen.
+    assert e.karten == {"Anna": R.UNRUHESTIFTERIN, "Ben": R.WERWOLF, "Clara": R.DORFBEWOHNER}
 
 
 def test_betrunkener_tauscht_mit_der_mitte() -> None:

@@ -4,7 +4,7 @@ from werwolf.engine import Engine
 from werwolf.mensch_spieler import MenschSpieler
 from werwolf.mock_agent import MockAgent
 from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Phase, Zug
-from werwolf.vollmondnacht.engine import NICHTS_TUN, VERTAUSCHEN, VollmondEngine
+from werwolf.vollmondnacht.engine import MITTE_ANSEHEN, SPIELER_ANSEHEN, VERTAUSCHEN, VollmondEngine
 from werwolf.vollmondnacht.rollen import Rolle
 
 NAMEN = ["Anna", "Ben", "Clara", "Dario", "Emil"]
@@ -41,14 +41,15 @@ def test_auswahl_per_nummer_und_name_und_falsche_eingabe() -> None:
 
 
 def test_mehrere_tools_und_parameter() -> None:
-    optionen = {VERTAUSCHEN: {"ziel1": ["Ben", "Clara"], "ziel2": ["Ben", "Clara"]}, NICHTS_TUN: {}}
-    mensch = MenschSpieler(Tastatur(["1", "2", "1"]), lambda _: None)  # ziel2: nur noch Ben übrig
-    aktion = mensch.handeln(zug(erlaubte_tools=[VERTAUSCHEN, NICHTS_TUN], optionen=optionen))
+    optionen = {VERTAUSCHEN: {"ziel1": ["Ben", "Clara"], "ziel2": ["Ben", "Clara"]}}
+    mensch = MenschSpieler(Tastatur(["2", "1"]), lambda _: None)  # nur ein Tool: keine Tool-Frage; ziel2: nur noch Ben
+    aktion = mensch.handeln(zug(erlaubte_tools=[VERTAUSCHEN], optionen=optionen))
     assert aktion.tool == VERTAUSCHEN and aktion.parameter == {"ziel1": "Clara", "ziel2": "Ben"}
 
-    nichts = MenschSpieler(Tastatur(["2"]), lambda _: None).handeln(
-        zug(erlaubte_tools=[VERTAUSCHEN, NICHTS_TUN], optionen=optionen))
-    assert nichts.tool == NICHTS_TUN and nichts.parameter == {}
+    seherin = {SPIELER_ANSEHEN: {"ziel": ["Ben", "Clara"]}, MITTE_ANSEHEN: {}}
+    mitte = MenschSpieler(Tastatur(["2"]), lambda _: None).handeln(
+        zug(erlaubte_tools=[SPIELER_ANSEHEN, MITTE_ANSEHEN], optionen=seherin))
+    assert mitte.tool == MITTE_ANSEHEN and mitte.parameter == {}
 
 
 def test_geheimwissen_nur_einmal_zeigen() -> None:
