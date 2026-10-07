@@ -82,7 +82,7 @@ function zustand(seit) {
     // Vor dem ersten Schritt kennt nur das Formular die Menschen („ich“: alte gespeicherte Partien).
     menschen: z.menschen || partie.einstellungen.menschen || [partie.einstellungen.ich],
     ereignisse: z.ereignisse.slice(seit), anzahl: z.ereignisse.length,
-    frage: z.frage || null, geheimwissen: z.geheimwissen, karten: z.karten || {}, karte_titel: z.karte_titel || null,
+    frage: z.frage || null, geheimwissen: z.geheimwissen, karten: z.karten || {}, jetzt_karten: z.jetzt_karten || {}, karte_titel: z.karte_titel || null,
     ende: z.ende || null, gewonnen: z.gewonnen || {},
     fehler: partie.fehler, wiederholbar: Boolean(partie.fehler), status: partie.status, downloads,
   };

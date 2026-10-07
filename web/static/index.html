@@ -56,13 +56,16 @@
   /* Einstieg: Bevor der Chat erscheint, liegt deine Karte groß in der Mitte. */
   /* Vorhang: Mehrere Menschen an einem Gerät – erst wenn die richtige Person „Ich bin …“ tippt,
      erscheint Geheimes. Solange sind Chat, Zug und Karte verdeckt. */
-  #einstieg, #vorhang { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #einstieg, #vorhang, #morgen { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
   #einstieg .karte { width: min(240px, 60vw, calc(var(--hoehe, 100dvh) * .4)); margin-bottom: 12px; }
   #einstieg .karte-tipp, #vorhang p { max-width: 32em; }
   #vorhang h2 { font-size: 1.4rem; }
-  body.einstieg #einstieg, body.vorhang #vorhang { display: flex; }
+  #morgen .karte { width: min(200px, 50vw, calc(var(--hoehe, 100dvh) * .3)); cursor: default; }
+  #morgen .wissen { text-align: left; max-width: 32em; margin-bottom: 4px; }
+  body.einstieg #einstieg, body.vorhang #vorhang, body.morgen #morgen { display: flex; }
   body.einstieg #tisch, body.einstieg #zug, body.einstieg #status, body.einstieg #tisch-bereich > h2, body.einstieg #du,
-  body.vorhang #tisch, body.vorhang #zug, body.vorhang #status, body.vorhang #tisch-bereich > h2, body.vorhang #du { display: none; }
+  body.vorhang #tisch, body.vorhang #zug, body.vorhang #status, body.vorhang #tisch-bereich > h2, body.vorhang #du,
+  body.morgen #tisch, body.morgen #zug, body.morgen #status, body.morgen #tisch-bereich > h2, body.morgen #du { display: none; }
   .plaetze { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .plaetze label { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--text); font-size: .95rem; }
   .plaetze input { width: auto; }
@@ -90,7 +93,7 @@
   body.laeuft main { flex: 1; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr); }
   body.laeuft #tisch-bereich { display: flex; flex-direction: column; min-height: 0; }
   body.laeuft #tisch { flex: 1; min-height: 0; max-height: none; }
-  body.laeuft #einstieg, body.laeuft #vorhang { flex: 1; min-height: 0; overflow-y: auto; }
+  body.laeuft #einstieg, body.laeuft #vorhang, body.laeuft #morgen { flex: 1; min-height: 0; overflow-y: auto; }
   body.laeuft #zug { flex-shrink: 0; max-height: 45%; overflow-y: auto; }
   body.laeuft #seite { min-height: 0; overflow-y: auto; }
 
@@ -139,6 +142,21 @@
       </button>
       <p id="einstieg-tipp" class="karte-tipp">Tippe auf die Karte, um sie anzusehen. Nur du siehst sie.</p>
       <button id="zum-tisch" type="button" hidden>Zum Tisch</button>
+    </div>
+    <!-- Morgen: Was jeder Mensch in der Nacht erfahren hat – bevor der Chat beginnt. -->
+    <div id="morgen">
+      <h2 id="morgen-titel"></h2>
+      <div id="morgen-karte" hidden>
+        <div class="karte offen" aria-hidden="true">
+          <div class="karte-innen">
+            <div class="karte-seite"><img src="karten/rueckseite.jpg" alt=""></div>
+            <div class="karte-seite karte-vorne" id="morgen-vorne"></div>
+          </div>
+        </div>
+        <p id="morgen-karte-text" class="karte-tipp"></p>
+      </div>
+      <ul id="morgen-wissen" class="wissen"></ul>
+      <button id="morgen-weiter" type="button"></button>
     </div>
     <!-- Übergabe bei mehreren Menschen an einem Gerät. -->
     <div id="vorhang">
@@ -313,18 +331,25 @@ for (const id of ["basis", "modell"]) {
 // nur, wer gerade „Ich bin …“ getippt hat (`aktiv`). Bei nur einem Menschen ist das immer er.
 // Bilddateien heißen wie die Rolle, klein und ohne Umlaute: „Räuber“ → karten/raeuber.jpg.
 const UMLAUTE = { "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss" };
-let menschen = [], karten = {}, wissenVon = {}, kartenTitel = "Deine Karte zu Beginn";
-let aktiv = null, zuletzt = null, frage = null, seed = null, gesehen = new Set();
-let einstiegFuer = null, duPerson = null, duWissen = null, zugSchluessel = null;
+let menschen = [], karten = {}, jetztKarten = {}, wissenVon = {}, kartenTitel = "Deine Karte zu Beginn";
+let aktiv = null, zuletzt = null, frage = null, seed = null, gesehen = new Set(), morgenGesehen = new Set(), tagDa = false;
+let einstiegFuer = null, morgenFuer = null, duPerson = null, duWissen = null, zugSchluessel = null;
 const mehrere = () => menschen.length > 1;
 
 // Wer seine Karte schon angesehen hat – pro Partie gemerkt, damit Neuladen nicht wieder bei den Karten anfängt.
-const GESEHEN = () => `werwolf-gesehen-${seed}`;
+const GESEHEN = () => `werwolf-gesehen-${seed}`, MORGEN = () => `werwolf-morgen-${seed}`;
 function gesehenLaden() {
-  try { gesehen = new Set(JSON.parse(sessionStorage.getItem(GESEHEN()) || "[]")); } catch { gesehen = new Set(); }
+  const laden = (schluessel) => {
+    try { return new Set(JSON.parse(sessionStorage.getItem(schluessel) || "[]")); } catch { return new Set(); }
+  };
+  gesehen = laden(GESEHEN());
+  morgenGesehen = laden(MORGEN());
 }
 function gesehenMerken() {
-  try { sessionStorage.setItem(GESEHEN(), JSON.stringify([...gesehen])); } catch { /* dann eben nicht merken */ }
+  try {
+    sessionStorage.setItem(GESEHEN(), JSON.stringify([...gesehen]));
+    sessionStorage.setItem(MORGEN(), JSON.stringify([...morgenGesehen]));
+  } catch { /* dann eben nicht merken */ }
 }
 
 // Entscheidet, was zu sehen ist: Vorhang (Gerät weitergeben), Karte ansehen oder der Tisch.
@@ -335,25 +360,31 @@ function ansicht() {
     zuletzt = null;
   }
   const offen = menschen.find((m) => !gesehen.has(m) && karten[m]);  // muss die Karte noch ansehen
-  const dran = offen || frage?.wer || null;  // wem das Gerät gerade gehört
+  // Nach der Nacht (Vollmondnacht): Jeder erfährt, was er nachts gesehen hat, bevor er an den Tisch kommt.
+  const morgen = !offen && tagDa && !spielEnde ? menschen.find((m) => !morgenGesehen.has(m)) : undefined;
+  const dran = offen || morgen || frage?.wer || null;  // wem das Gerät gerade gehört
   const vorhang = mehrere() && dran !== null && aktiv !== dran;
-  const warEinstieg = document.body.classList.contains("einstieg");
+  const warVorTisch = ["einstieg", "morgen"].some((k) => document.body.classList.contains(k));
   document.body.classList.toggle("vorhang", vorhang);
   document.body.classList.toggle("einstieg", !vorhang && Boolean(offen));
-  if (vorhang) vorhangZeigen(dran, Boolean(offen));
+  document.body.classList.toggle("morgen", !vorhang && Boolean(morgen));
+  if (vorhang) vorhangZeigen(dran, offen ? "karte" : morgen ? "morgen" : "zug");
   if (!vorhang && offen) einstiegZeigen(offen); else einstiegFuer = null;
-  duZeigen(vorhang || offen ? null : aktiv);
-  zugZeigen(!vorhang && !offen && frage && (!mehrere() || frage.wer === aktiv) ? frage : null);
-  $("blatt-auf").textContent = aktiv && !offen && karten[aktiv] ? `Karte: ${karten[aktiv]}` : mehrere() ? "Menü" : "Deine Karte";
-  if (warEinstieg && !offen) {  // gerade an den Tisch gekommen
+  if (!vorhang && morgen) morgenZeigen(morgen); else morgenFuer = null;
+  const amTisch = !vorhang && !offen && !morgen;
+  duZeigen(amTisch ? aktiv : null);
+  zugZeigen(amTisch && frage && (!mehrere() || frage.wer === aktiv) ? frage : null);
+  $("blatt-auf").textContent = amTisch && aktiv && karten[aktiv] ? `Karte: ${karten[aktiv]}` : mehrere() ? "Menü" : "Deine Karte";
+  if (warVorTisch && amTisch) {  // gerade an den Tisch gekommen
     amEnde = true;
     $("tisch").scrollTop = $("tisch").scrollHeight;
     if (!MOBIL.matches) $("zug").querySelector("textarea")?.focus();
   }
 }
 
-function vorhangZeigen(name, nurKarte) {
-  $("vorhang-titel").textContent = nurKarte ? `${name}, sieh dir deine Karte an` : `${name} ist dran`;
+function vorhangZeigen(name, wofuer) {
+  $("vorhang-titel").textContent = { karte: `${name}, sieh dir deine Karte an`, morgen: `${name}, der Morgen ist da` }[wofuer]
+    || `${name} ist dran`;
   $("vorhang-text").textContent = `Gib das Gerät an ${name}. Alle anderen schauen bitte weg.`;
   $("vorhang-knopf").textContent = `Ich bin ${name}`;
   $("vorhang-knopf").dataset.name = name;
@@ -367,6 +398,31 @@ function zugErledigt() {
 
 $("vorhang-knopf").addEventListener("click", () => {
   aktiv = $("vorhang-knopf").dataset.name;
+  ansicht();
+});
+
+// --- Morgen: was du nachts erfahren hast (einmal pro Mensch, vor dem Chat) ---
+function morgenZeigen(name) {
+  if (morgenFuer === name) return;
+  morgenFuer = name;
+  $("morgen-titel").textContent = (mehrere() ? `${name}: ` : "") + "Das hast du in der Nacht erfahren";
+  // Räuber und Schlaflose haben ihre eigene Karte neu gesehen: groß zeigen.
+  const jetzt = jetztKarten[name];
+  $("morgen-karte").hidden = !jetzt;
+  vorderseite($("morgen-vorne"), jetzt);
+  $("morgen-karte-text").textContent = jetzt ? `Diese Karte liegt jetzt vor dir: ${jetzt}` : "";
+  // Die Startkarte kennt man schon – nur, was nachts dazukam.
+  const neu = (wissenVon[name] || []).filter((w) => !w.startsWith("Deine Karte zu Spielbeginn"));
+  $("morgen-wissen").replaceChildren(...(neu.length ? neu : ["Du hast in der Nacht nichts Neues erfahren."])
+    .map((w) => Object.assign(document.createElement("li"), { textContent: w })));
+  const weitere = menschen.some((m) => m !== name && !morgenGesehen.has(m));
+  $("morgen-weiter").textContent = weitere ? "Verstanden – Gerät weitergeben" : "Zum Tisch";
+}
+$("morgen-weiter").addEventListener("click", () => {
+  morgenGesehen.add(morgenFuer);
+  gesehenMerken();
+  const weitere = menschen.some((m) => !morgenGesehen.has(m));
+  if (mehrere() && (weitere || frage?.wer !== morgenFuer)) aktiv = null;
   ansicht();
 });
 
@@ -533,9 +589,10 @@ $("neu").addEventListener("submit", async (e) => {
   const antwort = await api("/api/neu", daten);
   if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
   anzahl = 0; letztePhase = null; amEnde = true; spielEnde = false;
-  menschen = []; karten = {}; wissenVon = {}; aktiv = null; zuletzt = null; frage = null; seed = null; gesehen = new Set();
-  einstiegFuer = null; duPerson = null; duWissen = null; zugSchluessel = null;
-  document.body.classList.remove("einstieg", "vorhang");
+  menschen = []; karten = {}; jetztKarten = {}; wissenVon = {}; aktiv = null; zuletzt = null; frage = null; seed = null;
+  gesehen = new Set(); morgenGesehen = new Set(); tagDa = false;
+  einstiegFuer = null; morgenFuer = null; duPerson = null; duWissen = null; zugSchluessel = null;
+  document.body.classList.remove("einstieg", "vorhang", "morgen");
   $("du").hidden = true;
   blattOeffnen(false);
   $("tisch").replaceChildren();
@@ -562,6 +619,7 @@ function zeichnen(z) {
   // Karten stehen schon beim Austeilen fest, vor dem ersten Zug.
   karten = z.karten || {};
   wissenVon = z.geheimwissen || {};
+  jetztKarten = z.jetzt_karten || {};
   kartenTitel = z.karte_titel || kartenTitel;
   frage = z.frage || null;
   spielEnde = Boolean(z.ende);
@@ -569,8 +627,13 @@ function zeichnen(z) {
   document.body.classList.add("laeuft");
   const wer = mehrere() ? `Menschen: ${menschen.join(", ")}` : `Du spielst als ${menschen[0]}`;
   $("kopfzeile").textContent = `${wer} · Seed ${z.seed}`;
-  for (const e of z.ereignisse) ereignisAnzeigen(e);
+  for (const e of z.ereignisse) {
+    if (e.art === "tag") tagDa = true;  // Vollmondnacht: Die Nacht ist vorbei
+    ereignisAnzeigen(e);
+  }
   anzahl = z.anzahl;
+  // Was nur in der Frage steht (klassisch: Vorschläge der anderen Wölfe), auch in der Seitenleiste zeigen.
+  if (frage) wissenVon[frage.wer] = [...new Set([...(wissenVon[frage.wer] || []), ...frage.geheimwissen])];
   ansicht();
 
   if (z.fehler) {
