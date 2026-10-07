@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from werwolf.schnittstelle import (
     ABSTIMMEN,
+    NACHT_WEITER,
     NOTIZ_SCHREIBEN,
     OPFER_WAEHLEN,
     PRUEFEN,
@@ -41,6 +42,7 @@ BESCHRIFTUNG = {
     MITTE_ANSEHEN: "Zwei Karten aus der Mitte ansehen",
     RAUBEN: "Karte eines Mitspielers rauben",
     VERTAUSCHEN: "Karten von zwei Mitspielern vertauschen",
+    NACHT_WEITER: "Du hast in dieser Nacht nichts zu tun. Tippe auf „Absenden“ und gib das Gerät weiter.",
 }
 
 
@@ -91,6 +93,8 @@ class MenschSpieler:
                 frei = [w for w in werte if w not in parameter.values()] or werte
                 parameter[name] = frei[self._auswahl(f"{BESCHRIFTUNG.get(tool, tool)} – {name}:", frei)]
             return parameter
+        if tool == NACHT_WEITER:
+            return {}
         if tool in ZIEL_TOOLS:
             ziele = zug.ziele or [n for n in zug.lebende if n != zug.ich]
             return {"ziel": ziele[self._auswahl(BESCHRIFTUNG.get(tool, tool), ziele)]}

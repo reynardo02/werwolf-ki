@@ -314,7 +314,7 @@ for (const id of ["basis", "modell"]) {
 // Bilddateien heißen wie die Rolle, klein und ohne Umlaute: „Räuber“ → karten/raeuber.jpg.
 const UMLAUTE = { "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss" };
 let menschen = [], karten = {}, wissenVon = {}, kartenTitel = "Deine Karte zu Beginn";
-let aktiv = null, frage = null, seed = null, gesehen = new Set();
+let aktiv = null, zuletzt = null, frage = null, seed = null, gesehen = new Set();
 let einstiegFuer = null, duPerson = null, duWissen = null, zugSchluessel = null;
 const mehrere = () => menschen.length > 1;
 
@@ -329,6 +329,11 @@ function gesehenMerken() {
 
 // Entscheidet, was zu sehen ist: Vorhang (Gerät weitergeben), Karte ansehen oder der Tisch.
 function ansicht() {
+  // Doppelgängerin: Ihr zweiter Nachtschritt folgt direkt – das Gerät bleibt bei ihr.
+  if (frage && zuletzt) {
+    if (frage.wer === zuletzt && frage.phase === "Nacht") aktiv = zuletzt;
+    zuletzt = null;
+  }
   const offen = menschen.find((m) => !gesehen.has(m) && karten[m]);  // muss die Karte noch ansehen
   const dran = offen || frage?.wer || null;  // wem das Gerät gerade gehört
   const vorhang = mehrere() && dran !== null && aktiv !== dran;
@@ -356,7 +361,7 @@ function vorhangZeigen(name, nurKarte) {
 // Nach deinem Zug: Bei mehreren Menschen verschwindet alles Geheime, das Gerät geht weiter.
 function zugErledigt() {
   frage = null;
-  if (mehrere()) aktiv = null;
+  if (mehrere()) { zuletzt = aktiv; aktiv = null; }
   ansicht();
 }
 
@@ -528,7 +533,7 @@ $("neu").addEventListener("submit", async (e) => {
   const antwort = await api("/api/neu", daten);
   if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
   anzahl = 0; letztePhase = null; amEnde = true; spielEnde = false;
-  menschen = []; karten = {}; wissenVon = {}; aktiv = null; frage = null; seed = null; gesehen = new Set();
+  menschen = []; karten = {}; wissenVon = {}; aktiv = null; zuletzt = null; frage = null; seed = null; gesehen = new Set();
   einstiegFuer = null; duPerson = null; duWissen = null; zugSchluessel = null;
   document.body.classList.remove("einstieg", "vorhang");
   $("du").hidden = true;

@@ -19,7 +19,7 @@ from typing import Any
 from werwolf.aufbau import VOLLMONDNACHT
 from werwolf.mensch_spieler import BESCHRIFTUNG
 from werwolf.roles import Rolle as KlassischeRolle
-from werwolf.schnittstelle import ZIEL_TOOLS, Aktion, Ereignis, Zug
+from werwolf.schnittstelle import NACHT_WEITER, ZIEL_TOOLS, Aktion, Ereignis, Zug
 from werwolf.vollmondnacht.rollen import Rolle as VollmondRolle
 
 
@@ -42,7 +42,7 @@ def frage_aus_zug(zug: Zug) -> dict[str, Any]:
             "beschriftung": BESCHRIFTUNG.get(tool, tool),
             "parameter": parameter,
             # Tools ohne feste Werte und ohne Parameter-Liste brauchen einen Freitext.
-            "text": tool not in zug.optionen and tool not in ZIEL_TOOLS,
+            "text": tool not in zug.optionen and tool not in ZIEL_TOOLS and tool != NACHT_WEITER,
         })
     vollmond = isinstance(zug.rolle, VollmondRolle)
     return {
