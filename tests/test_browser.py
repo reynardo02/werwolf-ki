@@ -1,6 +1,7 @@
 """Die Browser-Version (web/browser.py) – hier in normalem Python mit simuliertem LLM."""
 
 import json
+import re
 import subprocess
 import sys
 
@@ -128,6 +129,9 @@ def test_seite_bauen(tmp_path) -> None:
     assert "web/browser.py" in namen and "werwolf/prompts/persoenlichkeiten.txt" in namen
     assert "werwolf/vollmondnacht/prompts/system.txt" in namen
     assert not any("__pycache__" in n or n.startswith("tests/") or "static/" in n for n in namen)
+    # Gegen den Browser-Cache: Seite, Backend und Code tragen dieselbe Versionsnummer.
+    version = re.search(r'pyodide-backend\.js\?v=(\w+)"', seite)[1]
+    assert f'werwolf-ki.zip?v={version}"' in (ziel / "pyodide-backend.js").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("regeln, titel", [("vollmondnacht", "Deine Karte zu Beginn"), ("klassisch", "Deine Rolle")])

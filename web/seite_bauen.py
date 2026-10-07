@@ -13,6 +13,7 @@ fest und die Seite hängt von keinem fremden Server ab.
 """
 
 import argparse
+import hashlib
 import shutil
 import zipfile
 from pathlib import Path
@@ -39,6 +40,11 @@ def code_packen(ziel: Path) -> list[str]:
     return namen
 
 
+def _ersetzen(text: str, alt: str, neu: str) -> str:
+    assert text.count(alt) == 1, f"{alt} nicht genau einmal gefunden"
+    return text.replace(alt, neu)
+
+
 def bauen(ziel: Path, pyodide: Path) -> None:
     fehlend = [d for d in PYODIDE_DATEIEN if not (pyodide / d).exists()]
     if fehlend:
@@ -46,16 +52,22 @@ def bauen(ziel: Path, pyodide: Path) -> None:
     if ziel.exists():
         shutil.rmtree(ziel)
     (ziel / "pyodide").mkdir(parents=True)
-    shutil.copy(STATIC / "pyodide-backend.js", ziel / "pyodide-backend.js")
     shutil.copytree(STATIC / "karten", ziel / "karten")
-    # Markierung: Diese Fassung hat keinen Python-Server, also gleich Python im Browser laden.
-    seite = (STATIC / "index.html").read_text(encoding="utf-8")
-    markiert = seite.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="werwolf-modus" content="browser">', 1)
-    assert markiert != seite, "index.html: <meta charset> nicht gefunden"
-    (ziel / "index.html").write_text(markiert, encoding="utf-8")
     for datei in PYODIDE_DATEIEN:
         shutil.copy(pyodide / datei, ziel / "pyodide" / datei)
     namen = code_packen(ziel / "werwolf-ki.zip")
+
+    # Versionsnummer gegen den Browser-Cache: Sonst lädt ein Browser nach einem Update evtl. neues
+    # index.html, aber altes pyodide-backend.js oder alten Python-Code – das passt nicht zusammen.
+    backend = (STATIC / "pyodide-backend.js").read_text(encoding="utf-8")
+    version = hashlib.sha256(backend.encode() + (ziel / "werwolf-ki.zip").read_bytes()).hexdigest()[:12]
+    (ziel / "pyodide-backend.js").write_text(
+        _ersetzen(backend, '"./werwolf-ki.zip"', f'"./werwolf-ki.zip?v={version}"'), encoding="utf-8")
+    seite = (STATIC / "index.html").read_text(encoding="utf-8")
+    seite = _ersetzen(seite, '"./pyodide-backend.js"', f'"./pyodide-backend.js?v={version}"')
+    # Markierung: Diese Fassung hat keinen Python-Server, also gleich Python im Browser laden.
+    seite = _ersetzen(seite, '<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="werwolf-modus" content="browser">')
+    (ziel / "index.html").write_text(seite, encoding="utf-8")
     # Ohne diese Datei würde GitHub Pages die Seite durch Jekyll schicken.
     (ziel / ".nojekyll").touch()
     print(f"Seite gebaut in {ziel}: {len(namen)} Python-/Prompt-Dateien, Pyodide aus {pyodide}")
