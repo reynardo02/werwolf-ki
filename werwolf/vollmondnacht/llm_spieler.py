@@ -31,11 +31,17 @@ EHRLICH = (
 )
 # Experiment 4: Das Dorf erkannte oft den Lügner, stimmte aber gegen ihn, obwohl seine
 # Werwolf-Karte nachts schon bei jemand anderem lag. Deshalb ein Hinweis zum Kartenweg.
+# Serie 15 (Seed 920520): Alle sagten die Wahrheit, das Dorf rechnete der ehrlichen Anna die
+# Betrunkenen-Karte zu – und tötete sie trotzdem, weil sie „nur Dorfbewohner“ sagte. Der Betrunkene,
+# der einen Werwolf aus der Mitte gezogen hatte, blieb unbeachtet. Daher die letzten beiden Sätze.
 KARTENWEG = (
     " Verfolge den Weg der Karten: Nachts handelt jeder mit seiner Startkarte, auch wenn sie ihm "
     "vorher geraubt oder vertauscht wurde – nennen zwei Spieler dieselbe Karte, kann das also "
     "ehrlich sein. Gewonnen wird aber mit der Endkarte: Wurde ein Werwolf nachts beraubt oder "
-    "vertauscht, liegt seine Werwolf-Karte jetzt beim anderen. Stimme gegen den, der sie jetzt hat."
+    "vertauscht, liegt seine Werwolf-Karte jetzt beim anderen. Stimme gegen den, der sie jetzt hat. "
+    "Wer laut eurer Kartenkette am Ende eine Dorf-Karte hat, ist kein Werwolf – auch wenn er nur "
+    "seine Startkarte nennt. Hat der Betrunkene eine Mittelkarte genommen, kann er jetzt Werwolf "
+    "sein, ohne es zu wissen."
 )
 
 # Wer nachts eine Karte einer anderen Partei bekommen hat, wechselt die Seite.

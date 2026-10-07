@@ -86,6 +86,14 @@ def test_nur_werwoelfe_und_gerber_duerfen_luegen() -> None:
     assert "darfst lügen" in rollen_hinweis(Rolle.RAEUBER)
 
 
+def test_kartenweg_schuetzt_dorf_karten_und_nennt_den_betrunkenen() -> None:
+    # Serie 15, Seed 920520: Das Dorf tötete eine Spielerin, der es selbst eine Dorf-Karte zurechnete.
+    from werwolf.vollmondnacht.llm_spieler import KARTENWEG
+
+    assert "am Ende eine Dorf-Karte hat, ist kein Werwolf" in KARTENWEG
+    assert "Betrunkene eine Mittelkarte genommen" in KARTENWEG
+
+
 def test_wer_nachts_werwolf_wird_wechselt_die_seite() -> None:
     from werwolf.vollmondnacht.llm_spieler import EHRLICH, LUEGEN, rollen_hinweis
 
