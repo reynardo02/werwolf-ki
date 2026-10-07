@@ -116,6 +116,15 @@ class VollmondEngine:
             return self.kopie
         return karte
 
+    def wissen(self, name: str) -> list[str]:
+        """Was dieser Spieler bisher (vor allem nachts) erfahren hat."""
+        return list(self.spieler[name].wissen)
+
+    def bekannte_karte(self, name: str) -> str | None:
+        """Die eigene Karte, die dieser Spieler zuletzt gesehen hat (Räuber, Schlaflose), sonst None."""
+        karte = self.spieler[name].bekannte_karte
+        return karte.value if karte else None
+
     def endrollen(self) -> dict[str, Rolle]:
         return {name: self.rolle(karte) for name, karte in self.karten.items()}
 

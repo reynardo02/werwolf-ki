@@ -35,7 +35,7 @@ except ImportError:
 from core.llm_client import Antwort  # noqa: E402 – erst nach dem Platzhalter importieren
 from core.tools import ToolCall, ToolSchema  # noqa: E402
 from web.einstellungen import Fehler, einstellungen_pruefen, optionen  # noqa: E402
-from web.sitzung import frage_aus_zug, karte_titel  # noqa: E402
+from web.sitzung import frage_aus_zug, geheimes, karte_titel  # noqa: E402
 from werwolf.aufbau import (  # noqa: E402
     NAMEN,
     VOLLMONDNACHT,
@@ -77,10 +77,8 @@ class WiederholSpieler:
     def __init__(self, antworten: list[dict[str, Any]]) -> None:
         self.antworten = antworten
         self.i = 0
-        self.geheimwissen: dict[str, list[str]] = {}  # Platz -> zuletzt bekanntes Geheimwissen
 
     def handeln(self, zug: Zug) -> Aktion:
-        self.geheimwissen[zug.ich] = list(zug.geheimwissen)
         if self.i < len(self.antworten):
             antwort = self.antworten[self.i]
             self.i += 1
@@ -199,7 +197,7 @@ def schritt(
     zustand["ereignisse"] = [
         {"phase": x.phase.value, "art": x.art, "text": x.text} for x in alle if x.oeffentlich
     ]
-    zustand["geheimwissen"] = mensch.geheimwissen
+    zustand |= geheimes(engine, e.menschen)
     zustand["karten"] = {m: rolle_von[m] for m in e.menschen}  # nur die der Menschen
     zustand["karte_titel"] = karte_titel(e.regeln)
     return zustand

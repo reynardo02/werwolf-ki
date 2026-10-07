@@ -282,6 +282,13 @@ class Engine:
     # Hilfsfunktionen
     # ------------------------------------------------------------------
 
+    def wissen(self, name: str) -> list[str]:
+        """Was dieser Spieler bisher erfahren hat (z. B. Prüfungen der Seherin)."""
+        return list(self.spieler[name].geheimwissen)
+
+    def bekannte_karte(self, name: str) -> str | None:
+        return None  # klassisch ändert sich die eigene Rolle nie
+
     def lebende(self) -> list[str]:
         return [s.name for s in self._lebende_spieler()]
 

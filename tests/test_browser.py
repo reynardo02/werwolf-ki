@@ -168,3 +168,26 @@ def test_mehrere_menschen_an_einem_geraet(regeln: str) -> None:
     if regeln == "vollmondnacht":
         partie = partie_aus_log([json.loads(zeile) for zeile in z["log"].splitlines()])
         assert partie.gruppe.endswith("mit 3 Menschen") and partie.mensch is None  # nicht in deiner Bilanz
+
+
+def test_nachtwissen_steht_vor_dem_ersten_tageszug_fest() -> None:
+    # Räuber oder Schlaflose als letzter Platz: Am Morgen (andere reden noch) kennt der Browser
+    # schon die Karte, die jetzt vor ihr/ihm liegt – nicht erst beim eigenen Zug.
+    for seed in range(200):
+        einstellungen = {"regeln": "vollmondnacht", "spieler": 7, "llm": "alle", "menschen": ["Greta"]}
+        mensch, llm = [], []
+        while True:
+            z = schritt(einstellungen, seed, mensch, llm, modell="test-modell")
+            if z["frage"]:
+                if z["frage"]["phase"] == "Diskussion":
+                    break
+                mensch.append(mensch_antwort(z["frage"]))
+                continue
+            if any(e["art"] == "tag" for e in z["ereignisse"]):
+                break  # Tag ist da, Greta wurde noch nicht wieder gefragt
+            llm.append(llm_antwort(z["llm_anfrage"]))
+        if z["karten"]["Greta"] in ("Räuber", "Schlaflose") and not z["frage"]:
+            wissen = " ".join(z["geheimwissen"]["Greta"])
+            assert z["jetzt_karten"]["Greta"] in wissen  # „Deine neue Karte: …“ bzw. „liegt diese Karte vor dir: …“
+            return
+    pytest.fail("Kein passender Seed gefunden")

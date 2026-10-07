@@ -56,6 +56,17 @@ def frage_aus_zug(zug: Zug) -> dict[str, Any]:
     }
 
 
+def geheimes(engine: Any, menschen: tuple[str, ...]) -> dict[str, Any]:
+    """Was nur die Menschen wissen – live aus der Engine, nicht erst bei ihrem nächsten Zug.
+
+    So sieht z. B. der Räuber schon morgens, vor dem Chat, welche Karte er jetzt hat.
+    """
+    return {
+        "geheimwissen": {m: engine.wissen(m) for m in menschen},
+        "jetzt_karten": {m: k for m in menschen if (k := engine.bekannte_karte(m))},
+    }
+
+
 def karte_titel(regeln: str) -> str:
     return "Deine Karte zu Beginn" if regeln == VOLLMONDNACHT else "Deine Rolle"
 
@@ -66,7 +77,6 @@ class WebSpieler:
     def __init__(self) -> None:
         self._antworten: queue.Queue[Aktion | None] = queue.Queue()
         self.frage: dict[str, Any] | None = None
-        self.geheimwissen: dict[str, list[str]] = {}  # Platz -> zuletzt bekanntes Geheimwissen
         # Laufende Nummer: Zwei gleich aussehende Fragen (z. B. zweimal „Etwas sagen“)
         # muss der Browser trotzdem als neue Frage erkennen.
         self._nummer = 0
@@ -76,7 +86,6 @@ class WebSpieler:
         with self._lock:
             self._nummer += 1
             self.frage = frage_aus_zug(zug) | {"nummer": self._nummer}
-            self.geheimwissen[zug.ich] = list(zug.geheimwissen)
         aktion = self._antworten.get()  # wartet auf den Browser
         if aktion is None:
             raise Abgebrochen()
@@ -117,6 +126,7 @@ class Sitzung:
     def __post_init__(self) -> None:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        self._engine: Any = None  # ab dem Austeilen: für Wissen und Karten der Menschen
         self.dateiname = f"partie_{datetime.now():%Y%m%d_%H%M%S}_web"
 
     def _beobachten(self, ereignis: Ereignis) -> None:
@@ -133,8 +143,9 @@ class Sitzung:
                             m: KlassischeRolle(k).team.value == gewinner for m, k in self.karten.items()
                         }
 
-    def _rollen_bekannt(self, rolle_von: dict[str, str]) -> None:
+    def _engine_gebaut(self, engine: Any, rolle_von: dict[str, str]) -> None:
         with self._lock:
+            self._engine = engine
             # Nur die der Menschen – die übrigen bleiben geheim.
             self.karten = {m: rolle_von[m] for m in self.menschen}
 
@@ -154,7 +165,7 @@ class Sitzung:
             kurz = partie_spielen(
                 self.seed, self.spieler, anzahl_llm, client, self.dateiname, ausfuehrlich=False,
                 regeln=self.regeln, szenario=self.szenario, menschen=self.menschen, mensch_spieler=self.mensch,
-                beobachter_extra=self._beobachten, konsole=False, rollen_bekannt=self._rollen_bekannt,
+                beobachter_extra=self._beobachten, konsole=False, engine_gebaut=self._engine_gebaut,
                 **({"ordner": self.ordner} if self.ordner else {}),
             )
             with self._lock:
@@ -175,7 +186,8 @@ class Sitzung:
                 "ereignisse": self.ereignisse[seit:],
                 "anzahl": len(self.ereignisse),
                 "frage": self.mensch.frage,
-                "geheimwissen": dict(self.mensch.geheimwissen),
+                **(geheimes(self._engine, self.menschen) if self._engine
+                   else {"geheimwissen": {}, "jetzt_karten": {}}),
                 "karten": dict(self.karten),
                 "karte_titel": karte_titel(self.regeln),
                 "ende": self.ende,

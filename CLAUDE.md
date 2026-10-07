@@ -70,7 +70,7 @@ Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten
   Bilder für alle 12 Rollen (beide Varianten), Name wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins,
   erscheint eine schlichte Karte mit dem Namen.
   Zu Beginn jeder Partie zeigt die Seite statt des Chats nur deine Karte (groß, verdeckt); erst nach dem Umdrehen
-  geht es mit „Zum Tisch“ weiter. Die Karte kommt schon beim Austeilen mit (`karten` im Zustand, über `rollen_bekannt`
+  geht es mit „Zum Tisch“ weiter. Die Karte kommt schon beim Austeilen mit (`karten` im Zustand, über `engine_gebaut`
   in main.py bzw. `rolle_von` in web/browser.py), nicht erst mit deinem ersten Zug. Geheimwissen erscheint erst danach.
 Zusatz: Handy und iPad – während der Partie füllt die Seite genau den Bildschirm (Höhe aus visualViewport, schrumpft mit
   der Tastatur). Nur der Chat scrollt, dein Zug steht fest darunter und der Chat springt nur nach unten, wenn du schon unten warst.
@@ -90,6 +90,10 @@ Zusatz: Mehrere Menschen an einem Gerät (bis 5, Pass and Play, Server und GitHu
   und Rollen-Reihenfolge die Karte. Vollmondnacht sammelt die blinden Entscheidungen (Seherin, Räuber, Unruhestifterin)
   vorab ein und führt sie in Nachtreihenfolge aus, die Doppelgängerin handelt gleich ganz (sie ist ohnehin zuerst dran).
   Ergebnisse bleiben gleich (tests/test_nacht_reihum.py). LLM-Partien und Partien mit einem Menschen laufen wie bisher.
+Zusatz: Morgen-Bildschirm (Vollmondnacht, auch allein): Nach der Nacht sieht jeder Mensch vor dem Chat, was er nachts erfahren
+  hat (Werwolf-Partner bzw. Mittelkarte, Seherin-Blick, Tausch) – Räuber und Schlaflose groß mit der Karte, die jetzt vor
+  ihnen liegt. Das Wissen kommt live aus der Engine (`wissen`/`bekannte_karte`, `geheimes()` in web/sitzung.py), nicht erst
+  beim nächsten Zug. Erst nach der Nacht, weil reihum eingesammelte Entscheidungen erst dann ausgeführt sind.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
