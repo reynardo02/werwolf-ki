@@ -67,7 +67,8 @@ getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
   Anbieter-Auswahl im LLM-Zugang (OpenAI mit gpt-5.4 als Standard, Gemini, eigene); OpenAI schickt temperature=1.
 Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten/rueckseite.jpg) und dreht sich per Klick um.
-  Bilder heißen wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins, erscheint eine schlichte Karte mit dem Namen.
+  Bilder für alle 12 Rollen (beide Varianten), Name wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins,
+  erscheint eine schlichte Karte mit dem Namen.
   Geheimwissen und Zug erscheinen erst, wenn du die Karte einmal angesehen hast.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)

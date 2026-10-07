@@ -167,3 +167,16 @@ def test_jede_frage_hat_eine_neue_nummer(tmp_path: Path) -> None:
             sitzung.antworten(*antwort(frage))
         time.sleep(0.01)
     assert len(nummern) >= 2 and nummern == sorted(set(nummern))
+
+
+def test_jede_rolle_hat_ein_kartenbild() -> None:
+    # Gleiche Regel wie kartenDatei() in index.html: klein, Umlaute ausgeschrieben, nur a–z.
+    from werwolf.roles import Rolle as KlassischeRolle
+    from werwolf.vollmondnacht.rollen import Rolle as VollmondRolle
+
+    karten = Path(__file__).parent.parent / "web" / "static" / "karten"
+    umlaute = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+    for rolle in [*VollmondRolle, *KlassischeRolle]:
+        name = "".join(z for z in rolle.value.lower().translate(umlaute) if "a" <= z <= "z")
+        assert (karten / f"{name}.jpg").is_file(), rolle.value
+    assert (karten / "rueckseite.jpg").is_file()
