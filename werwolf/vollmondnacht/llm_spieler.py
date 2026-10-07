@@ -124,6 +124,13 @@ AUFGABEN = {
     ),
 }
 
+# Serie 15 (920520, 920529): Das Dorf rechnete einem ehrlichen, beraubten Spieler selbst die
+# Räuber-Karte zu und stimmte trotzdem gegen ihn, „weil er nur seine Startkarte nennt“.
+DORF_STIMME = (
+    " Zeige auf den, der jetzt am wahrscheinlichsten eine Werwolf-Karte hat – nicht auf jemanden, "
+    "dem du selbst eine Dorf-Karte zurechnest."
+)
+
 # Manche Spieler (vor allem Werwölfe) redeten herum, ohne je eine Karte zu nennen.
 # Am Tisch fragt man das als Erstes – daher Pflicht in der ersten Wortmeldung.
 # Danach behaupteten Werwölfe oft „Seherin, zwei Mittelkarten angesehen“, ohne die Karten
@@ -242,6 +249,8 @@ class VollmondLLMSpieler(LLMSpieler):
             # würde sich sonst selbst verraten (Serie 6, Partien 7 und 8).
             if zug.rolle in TAUSCHER and _aktuelle_partei(zug) is Partei.DORF:
                 aufgabe += TAUSCH_FOLGE
+        if zug.erlaubte_tools[0] == ABSTIMMEN and _aktuelle_partei(zug) is Partei.DORF:
+            aufgabe += DORF_STIMME
         if zug.erlaubte_tools[0] == SPRECHEN and _partei_gewechselt(zug):
             assert isinstance(zug.bekannte_karte, Rolle)
             aufgabe += NICHT_VERRATEN.format(karte=zug.bekannte_karte.value)

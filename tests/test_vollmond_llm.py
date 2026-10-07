@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from core.llm_client import Antwort
 from core.tools import ToolCall, ToolSchema
-from werwolf.schnittstelle import SPRECHEN, Ereignis, Phase, Zug
+from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Ereignis, Phase, Zug
 from werwolf.vollmondnacht.engine import NACHAHMEN, VERTAUSCHEN, VollmondEngine
 from werwolf.vollmondnacht.llm_spieler import ROLLEN_HINWEISE, VollmondLLMSpieler
 from werwolf.vollmondnacht.rollen import Rolle, szenario_karten
@@ -259,3 +259,27 @@ def test_eigene_reden_und_stimmen_sind_als_du_markiert() -> None:
     assert 'Ben (du): "Ich war Räuber."' in nachricht
     assert "Ben (du) zeigt auf Anna." in nachricht
     assert 'Anna: "Ben lügt."' in nachricht and "Anna zeigt auf Ben." in nachricht
+
+
+def test_dorf_stimmt_nicht_gegen_eine_dorf_karte() -> None:
+    # Serie 15, Seeds 920520/920529: Das Dorf tötete Spieler, denen es selbst eine Dorf-Karte zurechnete.
+    from werwolf.vollmondnacht.llm_spieler import DORF_STIMME
+
+    spieler = VollmondLLMSpieler(FakeClient(), "ruhig")
+    zug = Zug(ich="Anna", rolle=Rolle.DORFBEWOHNER, runde=1, phase=Phase.ABSTIMMUNG,
+              erlaubte_tools=[ABSTIMMEN], lebende=["Anna", "Ben"], geheimwissen=[], notizen=[],
+              ereignisse=[])
+    assert DORF_STIMME in spieler.zug_prompt(zug)
+    assert DORF_STIMME not in spieler.zug_prompt(replace(zug, rolle=Rolle.WERWOLF))
+    # Wer nachts eine Werwolf-Karte geraubt hat, stimmt fürs Rudel.
+    assert DORF_STIMME not in spieler.zug_prompt(
+        replace(zug, rolle=Rolle.RAEUBER, bekannte_karte=Rolle.WERWOLF))
+
+
+def test_regeln_beraubte_nennen_zu_recht_ihre_startkarte() -> None:
+    from pathlib import Path
+
+    system = (Path(__file__).parent.parent / "werwolf/vollmondnacht/prompts/system.txt").read_text(encoding="utf-8")
+    assert "nennt zu Recht seine Startkarte" in system
+    assert "bestätigt diese Startkarte" in system
+    assert "Schlaflose, die vorher vertauscht\n  wurde, sieht am Ende die Karte" in system
