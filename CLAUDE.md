@@ -70,7 +70,7 @@ Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten
   Bilder für alle 12 Rollen (beide Varianten), Name wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins,
   erscheint eine schlichte Karte mit dem Namen.
   Zu Beginn jeder Partie zeigt die Seite statt des Chats nur deine Karte (groß, verdeckt); erst nach dem Umdrehen
-  geht es mit „Zum Tisch“ weiter. Die Karte kommt schon beim Austeilen mit (`karte` im Zustand, über `rollen_bekannt`
+  geht es mit „Zum Tisch“ weiter. Die Karte kommt schon beim Austeilen mit (`karten` im Zustand, über `rollen_bekannt`
   in main.py bzw. `rolle_von` in web/browser.py), nicht erst mit deinem ersten Zug. Geheimwissen erscheint erst danach.
 Zusatz: Handy und iPad – während der Partie füllt die Seite genau den Bildschirm (Höhe aus visualViewport, schrumpft mit
   der Tastatur). Nur der Chat scrollt, dein Zug steht fest darunter und der Chat springt nur nach unten, wenn du schon unten warst.
@@ -80,12 +80,16 @@ Zusatz: Prompt Caching (OpenAI cacht automatisch gleiche Anfänge ab 1024 Tokens
   Anfragen gleich bleibt. Geschätzt (Fake-Partien) steigt der cachebare Anteil von 5 % auf 25 %, echte Partien mit
   längeren Reden eher mehr. Gemessen wird `gecachte_tokens` (Statistik, Log, Protokoll, Auswertung).
   Kein `prompt_cache_key`: Bei unserem Tempo hilft er kaum, und andere Anbieter könnten das Feld ablehnen.
-
 Zusatz: Mehrere Menschen an einem Gerät (bis 5, Pass and Play, Server und GitHub Pages). Einstellungen haben `menschen`
   statt `ich` (altes Format wird weiter angenommen), alle menschlichen Plätze teilen sich ein Agent-Objekt, jede Frage nennt
   `wer`. Zustand mit `karten`, `geheimwissen` und `gewonnen` pro Mensch. Im Browser: Vorhang „Gib das Gerät an …“ vor jeder
   Kartenansicht und jedem Zug, danach ist alles Geheime wieder weg (`ansicht()` in index.html entscheidet Vorhang/Karte/Tisch).
   Auswertung: Gruppe „mit N Menschen“, solche Partien zählen nicht zur eigenen Bilanz (`--mensch`).
+  Nachts reihum (`nacht_reihum` in beiden Engines, nur bei mehr als einem Menschen): Jeder Mensch kommt nachts genau
+  einmal dran, in Sitzreihenfolge, ohne Aktion mit „nichts zu tun“ (Tool `nacht_weiter`) – sonst verrieten Überspringen
+  und Rollen-Reihenfolge die Karte. Vollmondnacht sammelt die blinden Entscheidungen (Seherin, Räuber, Unruhestifterin)
+  vorab ein und führt sie in Nachtreihenfolge aus, die Doppelgängerin handelt gleich ganz (sie ist ohnehin zuerst dran).
+  Ergebnisse bleiben gleich (tests/test_nacht_reihum.py). LLM-Partien und Partien mit einem Menschen laufen wie bisher.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).

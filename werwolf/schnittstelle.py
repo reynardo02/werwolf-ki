@@ -26,6 +26,9 @@ ABSTIMMEN = "abstimmen"
 OPFER_WAEHLEN = "opfer_waehlen"
 PRUEFEN = "pruefen"
 NOTIZ_SCHREIBEN = "notiz_schreiben"
+# Nur für Menschen, die sich ein Gerät teilen: Nachts kommt jeder einmal dran, auch ohne
+# Aktion – sonst verrät das Überspringen die Rolle. Kein Parameter.
+NACHT_WEITER = "nacht_weiter"
 
 # Tools mit einem Ziel-Spieler bzw. mit einem Freitext.
 ZIEL_TOOLS = {ABSTIMMEN, OPFER_WAEHLEN, PRUEFEN}

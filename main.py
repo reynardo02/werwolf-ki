@@ -89,7 +89,7 @@ def partie_spielen(
         for b in beobachter:
             b(ereignis)
 
-    engine, rolle_von = engine_bauen(regeln, agenten, rng, szenario or "", beobachten)
+    engine, rolle_von = engine_bauen(regeln, agenten, rng, szenario or "", beobachten, menschen)
     if rollen_bekannt:
         rollen_bekannt(rolle_von)
     modell = client.modell if client else None

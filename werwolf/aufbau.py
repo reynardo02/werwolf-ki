@@ -28,14 +28,19 @@ SPIELERZAHL = {KLASSISCH: (5, 7), VOLLMONDNACHT: (3, 10)}
 
 def engine_bauen(
     regeln: str, agenten: dict[str, Agent], rng: random.Random, szenario: str,
-    beobachter: Callable[[Ereignis], None],
+    beobachter: Callable[[Ereignis], None], menschen: Collection[str] = (),
 ) -> tuple[Engine | VollmondEngine, dict[str, str]]:
-    """Baut die Engine der gewählten Variante und gibt die (Start-)Rolle jedes Spielers zurück."""
+    """Baut die Engine der gewählten Variante und gibt die (Start-)Rolle jedes Spielers zurück.
+
+    Teilen sich mehrere Menschen ein Gerät, kommen sie nachts alle reihum dran (`nacht_reihum`),
+    damit niemand an Reihenfolge oder Überspringen eine Rolle erkennt. Allein braucht es das nicht.
+    """
+    reihum = menschen if len(menschen) > 1 else ()
     if regeln == VOLLMONDNACHT:
         karten = szenario_karten(szenario, len(agenten), rng)
-        engine = VollmondEngine(agenten, karten, rng=rng, beobachter=beobachter)
+        engine = VollmondEngine(agenten, karten, rng=rng, beobachter=beobachter, nacht_reihum=reihum)
         return engine, {s.name: s.startrolle.value for s in engine.spieler.values()}
-    klassisch = Engine(agenten, rng=rng, beobachter=beobachter)
+    klassisch = Engine(agenten, rng=rng, beobachter=beobachter, nacht_reihum=reihum)
     return klassisch, {s.name: s.rolle.value for s in klassisch.spieler.values()}
 
 

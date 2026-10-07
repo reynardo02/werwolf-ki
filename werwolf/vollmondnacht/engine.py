@@ -10,10 +10,10 @@ Wichtig für das Verständnis:
 
 import random
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 
-from werwolf.schnittstelle import ABSTIMMEN, SPRECHEN, Agent, Aktion, Ereignis, Phase, Zug
+from werwolf.schnittstelle import ABSTIMMEN, NACHT_WEITER, SPRECHEN, Agent, Aktion, Ereignis, Phase, Zug
 from werwolf.vollmondnacht.rollen import NACHT_REIHENFOLGE, Partei, Rolle, gewinner_bestimmen
 
 # Tools der Nacht (Abstimmen und Sprechen kommen aus der gemeinsamen Schnittstelle).
@@ -56,7 +56,9 @@ class VollmondEngine:
         mitte: list[Rolle] | None = None,
         diskussionsrunden: int = 2,
         beobachter: Callable[[Ereignis], None] | None = None,
+        nacht_reihum: Collection[str] = (),
     ) -> None:
+        """`nacht_reihum`: Plätze von Menschen, die sich ein Gerät teilen (siehe _nacht_reihum)."""
         self.rng = rng or random.Random()
         if len(karten) != len(agenten) + 3:
             raise ValueError("Es müssen genau 3 Karten mehr als Spieler im Spiel sein.")
@@ -77,6 +79,9 @@ class VollmondEngine:
         self.diskussionsrunden = diskussionsrunden
         self.beobachter = beobachter
         self.protokoll: list[Ereignis] = []
+        self.nacht_reihum = set(nacht_reihum)
+        self._vorab: dict[str, Aktion] = {}  # vorab eingesammelte Nachtentscheidungen
+        self._erledigt: set[str] = set()  # Doppelgängerinnen, die schon reihum dran waren
         self.runde = 1  # Vollmondnacht hat nur eine Runde
 
     # ------------------------------------------------------------------
@@ -121,9 +126,12 @@ class VollmondEngine:
     def _nacht(self) -> None:
         for s in self.spieler.values():
             s.wissen.append(f"Deine Karte zu Spielbeginn: {s.startrolle.value}.")
+        if self.nacht_reihum:
+            self._nacht_reihum()
 
         for dg in self._mit_startrolle(Rolle.DOPPELGAENGERIN):
-            self._doppelgaengerin(dg)
+            if dg.name not in self._erledigt:
+                self._doppelgaengerin(dg)
         self._werwoelfe()
         for s in self._mit_startrolle(Rolle.GUENSTLING):
             self._guenstling(s)
@@ -142,6 +150,43 @@ class VollmondEngine:
         if self.kopie is Rolle.SCHLAFLOSE:
             for dg in self._mit_startrolle(Rolle.DOPPELGAENGERIN):
                 self._schlaflose(dg)
+
+    def _nacht_reihum(self) -> None:
+        """Menschen an einem geteilten Gerät: Jeder kommt genau einmal dran, in Sitzreihenfolge.
+
+        Sonst verriete die Reihenfolge die Rolle (die Doppelgängerin ist zuerst dran) und wer
+        übersprungen wird, hätte keine Nachtaktion. Das geht ohne Regeländerung, weil nachts
+        alle blind wählen: Wen Seherin, Räuber oder Unruhestifterin nehmen, hängt nicht davon ab,
+        was andere vorher getan haben. Die Wahl wird hier eingesammelt und später in der
+        Nachtreihenfolge ausgeführt. Die Doppelgängerin handelt gleich ganz – sie ist sowieso
+        als Erste dran, also hat sich bis dahin nichts geändert.
+        """
+        for s in self.spieler.values():
+            if s.name not in self.nacht_reihum:
+                continue
+            if s.startrolle is Rolle.DOPPELGAENGERIN:
+                self._doppelgaengerin(s)
+                self._erledigt.add(s.name)
+            elif s.startrolle in NACHT_OPTIONEN:
+                self._vorab[s.name] = self._fragen(s, Phase.NACHT, NACHT_OPTIONEN[s.startrolle](self, s))
+            else:
+                self._fragen(s, Phase.NACHT, {NACHT_WEITER: {}})
+
+    def _nachtfrage(self, spieler: Spieler, optionen: Optionen) -> Aktion:
+        """Die Nachtentscheidung: vorab eingesammelt (_nacht_reihum) oder jetzt gefragt."""
+        return self._vorab.pop(spieler.name, None) or self._fragen(spieler, Phase.NACHT, optionen)
+
+    def _optionen_seherin(self, s: Spieler) -> Optionen:
+        return {SPIELER_ANSEHEN: {"ziel": self._andere(s)}, MITTE_ANSEHEN: {}}
+
+    def _optionen_raeuber(self, s: Spieler) -> Optionen:
+        # Kein „nichts tun“: Eine Unruhestifterin, die nichts vertauscht hatte, wirkte in einer
+        # eigenen Partie (696964) nur verdächtig und brachte dem Dorf keine Information.
+        return {RAUBEN: {"ziel": self._andere(s)}}
+
+    def _optionen_unruhestifterin(self, s: Spieler) -> Optionen:
+        andere = self._andere(s)
+        return {VERTAUSCHEN: {"ziel1": andere, "ziel2": andere}}
 
     def _doppelgaengerin(self, dg: Spieler) -> None:
         aktion = self._fragen(dg, Phase.NACHT, {NACHAHMEN: {"ziel": self._andere(dg)}})
@@ -204,8 +249,7 @@ class VollmondEngine:
             self._nachtaktion(None, "freimaurer_erkennen", ergebnis=", ".join(f.name for f in freimaurer))
 
     def _seherin(self, seherin: Spieler) -> None:
-        optionen = {SPIELER_ANSEHEN: {"ziel": self._andere(seherin)}, MITTE_ANSEHEN: {}}
-        aktion = self._fragen(seherin, Phase.NACHT, optionen)
+        aktion = self._nachtfrage(seherin, self._optionen_seherin(seherin))
         if aktion.tool == SPIELER_ANSEHEN:
             ziel = aktion.parameter["ziel"]
             karte = self.karten[ziel]
@@ -218,10 +262,7 @@ class VollmondEngine:
             self._nachtaktion(seherin, MITTE_ANSEHEN, ergebnis=", ".join(gesehen))
 
     def _raeuber(self, raeuber: Spieler) -> None:
-        # Kein „nichts tun“: Eine Unruhestifterin, die nichts vertauscht hatte, wirkte in einer
-        # eigenen Partie (696964) nur verdächtig und brachte dem Dorf keine Information.
-        optionen = {RAUBEN: {"ziel": self._andere(raeuber)}}
-        aktion = self._fragen(raeuber, Phase.NACHT, optionen)
+        aktion = self._nachtfrage(raeuber, self._optionen_raeuber(raeuber))
         ziel = aktion.parameter["ziel"]
         self._tauschen(raeuber.name, ziel)
         neu = self.karten[raeuber.name]
@@ -256,9 +297,7 @@ class VollmondEngine:
         return text
 
     def _unruhestifterin(self, us: Spieler) -> None:
-        andere = self._andere(us)
-        optionen = {VERTAUSCHEN: {"ziel1": andere, "ziel2": andere}}
-        aktion = self._fragen(us, Phase.NACHT, optionen)
+        aktion = self._nachtfrage(us, self._optionen_unruhestifterin(us))
         a, b = aktion.parameter["ziel1"], aktion.parameter["ziel2"]
         self._tauschen(a, b)
         us.wissen.append(f"Du hast die Karten von {a} und {b} vertauscht, ohne sie anzusehen.")
@@ -469,3 +508,11 @@ class VollmondEngine:
         self.protokoll.append(ereignis)
         if self.beobachter:
             self.beobachter(ereignis)
+
+
+# Startrollen, die nachts etwas wählen (ohne Doppelgängerin, die gleich ganz handelt).
+NACHT_OPTIONEN: dict[Rolle, Callable[[VollmondEngine, Spieler], Optionen]] = {
+    Rolle.SEHERIN: VollmondEngine._optionen_seherin,
+    Rolle.RAEUBER: VollmondEngine._optionen_raeuber,
+    Rolle.UNRUHESTIFTERIN: VollmondEngine._optionen_unruhestifterin,
+}

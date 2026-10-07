@@ -2,12 +2,13 @@
 
 import random
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 
 from werwolf.roles import Rolle, Team, rollen_verteilen
 from werwolf.schnittstelle import (
     ABSTIMMEN,
+    NACHT_WEITER,
     NOTIZ_SCHREIBEN,
     OPFER_WAEHLEN,
     PRUEFEN,
@@ -48,8 +49,13 @@ class Engine:
         diskussionsrunden: int = 2,
         max_runden: int = 50,
         beobachter: Callable[[Ereignis], None] | None = None,
+        nacht_reihum: Collection[str] = (),
     ) -> None:
+        """`nacht_reihum`: Plätze von Menschen, die sich ein Gerät teilen. Nachts kommen dann
+        alle Lebenden in Sitzreihenfolge dran, und diese Menschen auch ohne Aktion – sonst
+        verrieten Reihenfolge und Überspringen ihre Rolle."""
         self.rng = rng or random.Random()
+        self.nacht_reihum = set(nacht_reihum)
         # Feste Rollen sind praktisch für Tests, sonst wird zufällig verteilt.
         rollen = rollen or rollen_verteilen(list(agenten), self.rng)
         if set(rollen) != set(agenten):
@@ -110,36 +116,52 @@ class Engine:
 
         # Werwölfe stimmen nacheinander ab, jeder sieht die Vorschläge der anderen.
         vorschlaege: list[str] = []
-        opfer_kandidaten = [s.name for s in self._lebende_spieler() if s.rolle is not Rolle.WERWOLF]
-        for wolf in self._mit_rolle(Rolle.WERWOLF):
-            extra = [f"Vorschlag der Werwölfe heute Nacht: {v}" for v in vorschlaege]
-            aktion = self._fragen(wolf, Phase.NACHT, OPFER_WAEHLEN, opfer_kandidaten, extra)
-            ziel = aktion.parameter["ziel"]
-            vorschlaege.append(ziel)
-            self._melden(
-                Phase.NACHT, f"{wolf.name} (Werwolf) wählt {ziel}.", oeffentlich=False,
-                art="opfer_vorschlag", daten={"werwolf": wolf.name, "ziel": ziel},
-            )
-            self._begruendung_melden(Phase.NACHT, wolf, aktion)
+        if self.nacht_reihum:
+            # Alle Lebenden in Sitzreihenfolge. Die Seherin prüft unabhängig vom Opfer,
+            # ihre Position in der Reihe ändert also nichts.
+            for s in self._lebende_spieler():
+                if s.rolle is Rolle.WERWOLF:
+                    self._wolf_vorschlag(s, vorschlaege)
+                elif s.rolle is Rolle.SEHERIN:
+                    self._seherin_pruefen(s)
+                elif s.name in self.nacht_reihum:
+                    self._fragen(s, Phase.NACHT, NACHT_WEITER)
+        else:
+            for wolf in self._mit_rolle(Rolle.WERWOLF):
+                self._wolf_vorschlag(wolf, vorschlaege)
+            for seherin in self._mit_rolle(Rolle.SEHERIN):
+                self._seherin_pruefen(seherin)
 
         # Mehrheit der Wolfsstimmen, bei Gleichstand entscheidet der Zufall.
         opfer = self._mehrheit(vorschlaege) or self.rng.choice(self._spitzenreiter(vorschlaege))
 
-        for seherin in self._mit_rolle(Rolle.SEHERIN):
-            kandidaten = [s.name for s in self._lebende_spieler() if s is not seherin]
-            aktion = self._fragen(seherin, Phase.NACHT, PRUEFEN, kandidaten)
-            ziel = self.spieler[aktion.parameter["ziel"]]
-            seherin.geheimwissen.append(
-                f"Runde {self.runde}: {ziel.name} ist {ziel.rolle.value}."
-            )
-            self._melden(
-                Phase.NACHT, f"{seherin.name} (Seherin) prüft {ziel.name}.", oeffentlich=False,
-                art="pruefung",
-                daten={"seherin": seherin.name, "ziel": ziel.name, "rolle": ziel.rolle.value},
-            )
-
         # Morgen: Opfer wird verkündet und seine Rolle aufgedeckt.
         self._toeten(Phase.MORGEN, opfer, "wurde in der Nacht von den Werwölfen getötet", "nacht")
+
+    def _wolf_vorschlag(self, wolf: Spieler, vorschlaege: list[str]) -> None:
+        opfer_kandidaten = [s.name for s in self._lebende_spieler() if s.rolle is not Rolle.WERWOLF]
+        extra = [f"Vorschlag der Werwölfe heute Nacht: {v}" for v in vorschlaege]
+        aktion = self._fragen(wolf, Phase.NACHT, OPFER_WAEHLEN, opfer_kandidaten, extra)
+        ziel = aktion.parameter["ziel"]
+        vorschlaege.append(ziel)
+        self._melden(
+            Phase.NACHT, f"{wolf.name} (Werwolf) wählt {ziel}.", oeffentlich=False,
+            art="opfer_vorschlag", daten={"werwolf": wolf.name, "ziel": ziel},
+        )
+        self._begruendung_melden(Phase.NACHT, wolf, aktion)
+
+    def _seherin_pruefen(self, seherin: Spieler) -> None:
+        kandidaten = [s.name for s in self._lebende_spieler() if s is not seherin]
+        aktion = self._fragen(seherin, Phase.NACHT, PRUEFEN, kandidaten)
+        ziel = self.spieler[aktion.parameter["ziel"]]
+        seherin.geheimwissen.append(
+            f"Runde {self.runde}: {ziel.name} ist {ziel.rolle.value}."
+        )
+        self._melden(
+            Phase.NACHT, f"{seherin.name} (Seherin) prüft {ziel.name}.", oeffentlich=False,
+            art="pruefung",
+            daten={"seherin": seherin.name, "ziel": ziel.name, "rolle": ziel.rolle.value},
+        )
 
     def _diskussion(self) -> None:
         for _ in range(self.diskussionsrunden):

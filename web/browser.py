@@ -168,7 +168,7 @@ def schritt(
     client = WiederholClient(modell, antworten_llm) if e.anzahl_llm else None
     besetzung = agenten_bauen(seed, rng, namen, e.anzahl_llm, client, e.regeln, e.menschen, mensch)
     alle: list[Ereignis] = []
-    engine, rolle_von = engine_bauen(e.regeln, besetzung.agenten, rng, szenario or "", alle.append)
+    engine, rolle_von = engine_bauen(e.regeln, besetzung.agenten, rng, szenario or "", alle.append, e.menschen)
 
     zustand: dict[str, Any] = {
         "menschen": list(e.menschen), "seed": seed, "frage": None, "llm_anfrage": None,
