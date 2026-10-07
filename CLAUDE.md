@@ -66,6 +66,9 @@ Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server
 getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
   Anbieter-Auswahl im LLM-Zugang (OpenAI mit gpt-5.4 als Standard, Gemini, eigene); OpenAI schickt temperature=1.
+Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten/rueckseite.jpg) und dreht sich per Klick um.
+  Bilder heißen wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins, erscheint eine schlichte Karte mit dem Namen.
+  Geheimwissen und Zug erscheinen erst, wenn du die Karte einmal angesehen hast.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
