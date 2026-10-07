@@ -189,4 +189,8 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
   Schlaflose tötet. In 920528 wechselte diesmal niemand die Partei. Räuber-Muster bleibt: Wölfe behaupten „Räuber, Dorfbewohner gesehen“, und der
   echte Räuber stirbt im 50:50 (529, 534, 538). Keine groben Regelfehler mehr in den Logs – die Prompt-Phase ist
   damit vorerst abgeschlossen; die restlichen Niederlagen sind echte Spielfehler oder gute Wolf-Lügen.
+- Regel-Fix nach eigener Browser-Partie (gpt-5.4-mini, Partie 696964): Die Unruhestifterin vertauschte nichts und sagte das
+  offen – das bringt dem Dorf keine Information. Räuber und Unruhestifterin müssen jetzt handeln (kein Tool nichts_tun
+  mehr, auch die Rollenbeschreibung sagt nicht mehr „darf“). Kartenverteilung und Mitte bleiben bei gleichem Seed gleich
+  (LLM-Serien also weiter vergleichbar), nur Partien mit MockAgent laufen anders.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.

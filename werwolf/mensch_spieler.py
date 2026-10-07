@@ -23,7 +23,6 @@ from werwolf.schnittstelle import (
 from werwolf.vollmondnacht.engine import (
     MITTE_ANSEHEN,
     NACHAHMEN,
-    NICHTS_TUN,
     RAUBEN,
     SPIELER_ANSEHEN,
     VERTAUSCHEN,
@@ -42,7 +41,6 @@ BESCHRIFTUNG = {
     MITTE_ANSEHEN: "Zwei Karten aus der Mitte ansehen",
     RAUBEN: "Karte eines Mitspielers rauben",
     VERTAUSCHEN: "Karten von zwei Mitspielern vertauschen",
-    NICHTS_TUN: "Nichts tun",
 }
 
 
@@ -85,7 +83,7 @@ class MenschSpieler:
 
     def _parameter_abfragen(self, zug: Zug, tool: str) -> dict[str, str]:
         if tool in zug.optionen:
-            # Mehrere Parameter (z. B. ziel1, ziel2) oder gar keine (nichts_tun).
+            # Mehrere Parameter (z. B. ziel1, ziel2) oder gar keine (mitte_ansehen).
             # Schon Gewähltes wird nicht nochmal angeboten: Die Unruhestifterin
             # braucht zwei verschiedene Spieler.
             parameter: dict[str, str] = {}

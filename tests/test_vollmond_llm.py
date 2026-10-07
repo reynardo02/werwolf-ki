@@ -6,7 +6,7 @@ from dataclasses import replace
 from core.llm_client import Antwort
 from core.tools import ToolCall, ToolSchema
 from werwolf.schnittstelle import SPRECHEN, Ereignis, Phase, Zug
-from werwolf.vollmondnacht.engine import NACHAHMEN, NICHTS_TUN, VERTAUSCHEN, VollmondEngine
+from werwolf.vollmondnacht.engine import NACHAHMEN, VERTAUSCHEN, VollmondEngine
 from werwolf.vollmondnacht.llm_spieler import ROLLEN_HINWEISE, VollmondLLMSpieler
 from werwolf.vollmondnacht.rollen import Rolle, szenario_karten
 
@@ -61,11 +61,10 @@ def test_prompts_und_tools() -> None:
     system, nachricht, tools = client.anfragen_liste[0]  # Nacht der Unruhestifterin
     assert "Du bist Anna" in system and "Unruhestifterin" in system and "frech" in system
     assert "Im Spiel sind diese 6 Karten" in nachricht
-    assert [t.name for t in tools] == [VERTAUSCHEN, NICHTS_TUN]
+    assert [t.name for t in tools] == [VERTAUSCHEN]  # kein „nichts tun“ (Partie 696964)
     assert sorted(tools[0].parameter["ziel1"]["enum"]) == ["Ben", "Clara"]
     # Gleiche (gemischte) Reihenfolge für beide Ziele.
     assert tools[0].parameter["ziel1"]["enum"] == tools[0].parameter["ziel2"]["enum"]
-    assert tools[1].parameter == {}
     # Die Doppelgängerin liegt in der Mitte, also fragt die Engine nie nach „nachahmen“.
     assert not any(NACHAHMEN in [t.name for t in ts] for _, _, ts in client.anfragen_liste)
 
