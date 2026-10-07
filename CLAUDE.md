@@ -70,6 +70,9 @@ Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten
   Bilder für alle 12 Rollen (beide Varianten), Name wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins,
   erscheint eine schlichte Karte mit dem Namen.
   Geheimwissen und Zug erscheinen erst, wenn du die Karte einmal angesehen hast.
+Zusatz: Handy und iPad – während der Partie füllt die Seite genau den Bildschirm (Höhe aus visualViewport, schrumpft mit
+  der Tastatur). Nur der Chat scrollt, dein Zug steht fest darunter und der Chat springt nur nach unten, wenn du schon unten warst.
+  Bis 900 px Breite liegen Karte und „Neue Partie“ in einem Blatt, das der Knopf oben rechts öffnet. Kein Autofokus aufs Textfeld.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
