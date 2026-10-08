@@ -201,6 +201,9 @@ class VollmondEngine:
         aktion = self._fragen(dg, Phase.NACHT, {NACHAHMEN: {"ziel": self._andere(dg)}})
         ziel = aktion.parameter["ziel"]
         self.kopie = self.karten[ziel]
+        # Ihre Karte zählt ab jetzt als die Kopie – das weiß sie. Ohne das bekam eine Doppel-Gerberin
+        # den Ehrlichkeits-Hinweis des Dorfs und sagte offen, dass sie jetzt Gerber ist.
+        dg.bekannte_karte = self.kopie
         dg.wissen.append(
             f"Du hast die Karte von {ziel} angesehen: {self.kopie.value}. Du bist jetzt "
             f"{self.kopie.value} und gehörst zur Partei {self.kopie.partei.value}."
@@ -274,7 +277,7 @@ class VollmondEngine:
         aktion = self._nachtfrage(raeuber, self._optionen_raeuber(raeuber))
         ziel = aktion.parameter["ziel"]
         self._tauschen(raeuber.name, ziel)
-        neu = self.karten[raeuber.name]
+        neu = self.karten[raeuber.name]  # er sieht die Karte, nicht, was eine Doppelgängerin nachahmt
         raeuber.bekannte_karte = neu
         raeuber.wissen.append(
             f"Du hast deine Karte mit {ziel} getauscht. Deine neue Karte: {neu.value}. "
@@ -321,9 +324,14 @@ class VollmondEngine:
         self._nachtaktion(betrunkener, "mitte_tauschen", karte=str(nummer + 1))
 
     def _schlaflose(self, schlaflose: Spieler) -> None:
-        karte = self.karten[schlaflose.name]
-        schlaflose.bekannte_karte = karte
-        schlaflose.wissen.append(f"Am Ende der Nacht liegt diese Karte vor dir: {karte.value}.")
+        karte = self.karten[schlaflose.name]  # die Karte, nicht, was eine Doppelgängerin nachahmt
+        text = f"Am Ende der Nacht liegt diese Karte vor dir: {karte.value}."
+        if karte is Rolle.DOPPELGAENGERIN and schlaflose.startrolle is Rolle.DOPPELGAENGERIN and self.kopie:
+            # Die Doppel-Schlaflose sieht ihre eigene Karte: Sie weiß, was diese nachahmt.
+            text = text[:-1] + f" – deine eigene, du bist also weiterhin {self.kopie.value}."
+        else:
+            schlaflose.bekannte_karte = karte
+        schlaflose.wissen.append(text)
         self._nachtaktion(schlaflose, "eigene_karte_ansehen", ergebnis=karte.value)
 
     # ------------------------------------------------------------------

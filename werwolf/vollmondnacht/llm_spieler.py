@@ -49,6 +49,11 @@ KARTENWEG = (
 )
 
 # Wer nachts eine Karte einer anderen Partei bekommen hat, wechselt die Seite.
+# Doppelgängerin nach dem Nachahmen: Sie spielt wie die Kopie, mit deren Hinweis und Partei.
+# Eigene Partie: Eine Doppel-Gerberin sagte offen „ich bin jetzt Gerber“ – sie kannte nur den
+# Hinweis „sonst hilft dem Dorf die Wahrheit“, in dem der Gerber fehlte.
+KOPIE = " Deine Karte zählt jetzt als {karte}: Du gehörst zur Partei {partei} und gewinnst nur mit ihr."
+
 NEUE_PARTEI = (
     " Wichtig: Vor dir liegt jetzt die Karte {karte}. Damit gehörst du zur Partei {partei} und "
     "gewinnst nur mit ihr – deine Startkarte zählt nicht mehr."
@@ -99,7 +104,7 @@ ROLLEN_HINWEISE = {
     Rolle.DORFBEWOHNER: "Die Werwölfe werden behaupten, Dorfbewohner zu sein – pass genau auf.",
     Rolle.DOPPELGAENGERIN: (
         "Nachts übernimmst du die Rolle eines Mitspielers und gehörst dann zu dessen Partei. "
-        "Wirst du Werwolf oder Günstling, darfst du lügen, sonst hilft dem Dorf die Wahrheit."
+        "Danach spielst du genau wie diese Rolle."
     ),
 }
 
@@ -233,12 +238,17 @@ def rollen_hinweis(rolle: Rolle, bekannte_karte: Rolle | None = None) -> str:
     Eine Schlaflose, die am Ende Werwolf ist, spielt jetzt fürs Rudel und darf lügen.
     Vorher bekam sie den Ehrlichkeits-Hinweis ihrer Startkarte und verriet sich selbst.
     """
+    if rolle is Rolle.DOPPELGAENGERIN:
+        if bekannte_karte is None:
+            return ROLLEN_HINWEISE[rolle]  # Partei steht erst nach dem Nachahmen fest
+        return (
+            ROLLEN_HINWEISE[rolle] + KOPIE.format(karte=bekannte_karte.value, partei=bekannte_karte.partei.value)
+            + " " + ROLLEN_HINWEISE[bekannte_karte] + _partei_hinweis(bekannte_karte.partei)
+        )
     if bekannte_karte is not None and bekannte_karte.partei is not rolle.partei:
         return ROLLEN_HINWEISE[rolle] + NEUE_PARTEI.format(
             karte=bekannte_karte.value, partei=bekannte_karte.partei.value
         ) + _partei_hinweis(bekannte_karte.partei)
-    if rolle is Rolle.DOPPELGAENGERIN:
-        return ROLLEN_HINWEISE[rolle]  # Partei steht erst nach dem Nachahmen fest
     return ROLLEN_HINWEISE[rolle] + _partei_hinweis(rolle.partei)
 
 

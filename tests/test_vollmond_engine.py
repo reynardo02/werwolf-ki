@@ -226,7 +226,11 @@ def test_doppelgaengerin_als_schlaflose_wacht_zuletzt() -> None:
     agenten["Anna"].nacht = Aktion(NACHAHMEN, {"ziel": "Ben"})
     e = engine(verteilung, [R.DORFBEWOHNER, R.RAEUBER, R.UNRUHESTIFTERIN], agenten)
     e.spielen()
-    assert e.spieler["Anna"].wissen[-1] == "Am Ende der Nacht liegt diese Karte vor dir: Doppelgängerin."
+    # Sie sieht die Karte „Doppelgängerin“ und weiß, dass das ihre eigene ist.
+    assert e.spieler["Anna"].wissen[-1] == (
+        "Am Ende der Nacht liegt diese Karte vor dir: Doppelgängerin – deine eigene, du bist also weiterhin Schlaflose."
+    )
+    assert e.spieler["Anna"].bekannte_karte is R.SCHLAFLOSE
 
 
 def test_wer_die_doppelgaengerin_karte_bekommt_uebernimmt_die_kopie() -> None:
@@ -239,6 +243,9 @@ def test_wer_die_doppelgaengerin_karte_bekommt_uebernimmt_die_kopie() -> None:
     ergebnis = e.spielen()
 
     assert ergebnis.endrollen["Dario"] is R.WERWOLF  # Doppelgängerin-Karte = Werwolf
+    # Dario sieht aber nur die Karte, nicht, was die Doppelgängerin nachgeahmt hat.
+    assert e.spieler["Dario"].bekannte_karte is R.DOPPELGAENGERIN
+    assert "Deine neue Karte: Doppelgängerin." in " ".join(e.spieler["Dario"].wissen)
     assert ergebnis.endrollen["Anna"] is R.RAEUBER
     assert set(ergebnis.sieger) == {"Ben", "Dario"}
 
