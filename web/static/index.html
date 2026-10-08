@@ -279,7 +279,7 @@
       <div class="zeile">
         <div>
           <label for="modell">Modell</label>
-          <input id="modell" value="gpt-5.4">
+          <input id="modell" value="gpt-6.1-sol">
         </div>
         <div>
           <label for="tempo">Anfragen pro Minute</label>
@@ -346,8 +346,8 @@ const ZUGANG = ["anbieter", "basis", "modell", "tempo"];
 // Gemini bleibt bei 0,9 wie in den Konsolen-Partien.
 const ANBIETER = {
   gemini: { basis: "https://generativelanguage.googleapis.com/v1beta/openai/", modell: "gemini-3.5-flash-lite", temperatur: 0.9 },
-  // gpt-5.4 spielt am besten (Serie 10, eigene Partien im Browser).
-  openai: { basis: "https://api.openai.com/v1", modell: "gpt-5.4", temperatur: 1 },
+  // gpt-6.1-sol: in eigenen Browser-Partien so gut wie gpt-5.4, aber billiger (läuft über /responses).
+  openai: { basis: "https://api.openai.com/v1", modell: "gpt-6.1-sol", temperatur: 1 },
 };
 
 function anbieterWaehlen() {
@@ -373,6 +373,8 @@ function zugangLaden() {
     const z = JSON.parse(localStorage.getItem("werwolf-zugang") || "{}");
     // „15“ war der alte Standard fürs Tempolimit – gemerkt heißt das nicht „gewollt“.
     if (z.tempo === "15") delete z.tempo;
+    // Gleiches beim alten OpenAI-Standard gpt-5.4: dann den neuen Standard nehmen.
+    if (z.anbieter === "openai" && z.modell === "gpt-5.4") delete z.modell;
     // Ältere Speicherstände kennen keinen Anbieter: aus der Adresse ableiten.
     if (!z.anbieter && z.basis) {
       z.anbieter = Object.keys(ANBIETER).find((a) => ANBIETER[a].basis === z.basis) || "eigene";

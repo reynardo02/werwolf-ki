@@ -65,7 +65,7 @@ beide Varianten; Partien mit Mensch bilden in der Auswertung eine eigene Gruppe)
 Meilenstein 5, Teil 2: Web-Oberfläche – umgesetzt (web/sitzung.py, web/server.py, web/static/index.html;
 getestet mit Sitzungs- und HTTP-Tests sowie per Playwright im Browser).
 Zusatz: Online spielbar über GitHub Pages (Pyodide, eigener API-Key im Browser, Partie überlebt Neuladen).
-  Anbieter-Auswahl im LLM-Zugang (OpenAI mit gpt-5.4 als Standard, Gemini, eigene); OpenAI schickt temperature=1.
+  Anbieter-Auswahl im LLM-Zugang (OpenAI mit gpt-6.1-sol als Standard, vorher gpt-5.4; Gemini, eigene); OpenAI schickt temperature=1.
 Zusatz: Spielkarten im Browser – deine Karte liegt verdeckt (web/static/karten/rueckseite.jpg) und dreht sich per Klick um.
   Bilder für alle 12 Rollen (beide Varianten), Name wie die Rolle, klein und ohne Umlaute (raeuber.jpg); fehlt eins,
   erscheint eine schlichte Karte mit dem Namen.
