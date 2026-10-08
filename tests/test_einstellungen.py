@@ -33,3 +33,27 @@ def test_alle_plaetze_menschlich() -> None:
     e = einstellungen_pruefen({"regeln": "vollmondnacht", "spieler": 4, "llm": "alle",
                                "menschen": ["Anna", "Ben", "Clara", "Dario"]})
     assert e.anzahl_llm == 0
+
+
+def test_eigene_namen_fuer_menschen() -> None:
+    e = einstellungen_pruefen({"regeln": "vollmondnacht", "spieler": 5, "llm": "alle",
+                               "menschen": ["Ben", "Clara"], "namen": {"Ben": " Paul ", "Clara": "David"}})
+    assert e.namen == ("Anna", "Paul", "David", "Dario", "Emil")  # LLMs behalten ihre Plätze
+    assert e.menschen == ("Paul", "David")
+    # Ohne eigenen Namen: der Platz-Name
+    e = einstellungen_pruefen({"regeln": "vollmondnacht", "spieler": 5, "menschen": ["Ben"], "namen": {"Ben": ""}})
+    assert e.menschen == ("Ben",) and e.namen[1] == "Ben"
+
+
+@pytest.mark.parametrize("namen", [
+    {"Anna": "Paul"},  # Anna ist kein Mensch
+    {"Ben": "Clara"},  # Clara sitzt schon am Tisch
+    {"Ben": "Paul, der Große"},  # Komma bricht Siegerlisten
+    {"Ben": 'Paul "P"'},  # Anführungszeichen brechen Reden
+    {"Ben": "7Zwerge"},  # muss mit einem Buchstaben anfangen
+    {"Ben": "x" * 21},  # zu lang
+    ["Paul"],  # keine Zuordnung
+])
+def test_falsche_namen(namen: object) -> None:
+    with pytest.raises(Fehler):
+        einstellungen_pruefen({"regeln": "vollmondnacht", "spieler": 5, "llm": "0", "menschen": ["Ben"], "namen": namen})

@@ -25,7 +25,8 @@ und ihren Zug. Danach wird alles wieder verdeckt.
 ## Mit Freunden per Link
 
 Unter „Davon per Link“ Plätze ankreuzen und Partie starten: Rechts erscheint für jeden Platz ein Link
-(„Kopieren“ oder „Teilen“). Wer ihn öffnet, spielt auf dem eigenen Handy oder Laptop mit – ohne eigenen
+(„Kopieren“ oder „Teilen“). Im Warteraum trägt jeder seinen Namen ein, dann startest du mit „Jetzt starten“.
+Wer den Link öffnet, spielt auf dem eigenen Handy oder Laptop mit – ohne eigenen
 API-Key, die Partie läuft in deinem Browser. Deine Seite muss dafür offen bleiben (am besten am Laptop;
 ein gesperrtes Handy pausiert die Seite). Die Browser verbinden sich direkt (WebRTC über
 [PeerJS](https://peerjs.com)); jeder bekommt nur seine eigenen Geheimnisse.

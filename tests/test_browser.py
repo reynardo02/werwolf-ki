@@ -194,3 +194,23 @@ def test_nachtwissen_steht_vor_dem_ersten_tageszug_fest() -> None:
             assert z["jetzt_karten"]["Greta"] in wissen  # „Deine neue Karte: …“ bzw. „liegt diese Karte vor dir: …“
             return
     pytest.fail("Kein passender Seed gefunden")
+
+
+def test_partie_mit_eigenen_namen() -> None:
+    einstellungen = {"regeln": "vollmondnacht", "spieler": 5, "llm": "alle", "menschen": ["Ben", "Clara"],
+                     "namen": {"Ben": "Paul", "Clara": "David"}}
+    mensch, llm = [], []
+    for _ in range(500):
+        z = schritt(einstellungen, 3, mensch, llm, modell="test-modell")
+        if z["ende"]:
+            break
+        if z["llm_anfrage"]:
+            # Die LLMs kennen die Menschen unter ihren eigenen Namen.
+            assert "Ben" not in json.dumps(z["llm_anfrage"]) and "Paul" in json.dumps(z["llm_anfrage"])
+            llm.append(llm_antwort(z["llm_anfrage"]))
+        else:
+            assert z["frage"]["wer"] in ("Paul", "David")
+            mensch.append(mensch_antwort(z["frage"]))
+    assert z["menschen"] == ["Paul", "David"] and set(z["karten"]) == {"Paul", "David"}
+    kopf = json.loads(z["log"].splitlines()[0])
+    assert [s["name"] for s in kopf["spieler"]] == ["Anna", "Paul", "David", "Dario", "Emil"]

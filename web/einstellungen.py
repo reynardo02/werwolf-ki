@@ -1,5 +1,6 @@
 """Prüft die Einstellungen einer neuen Partie – gemeinsam für Server und Browser-Version."""
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,6 +10,9 @@ from werwolf.vollmondnacht.rollen import szenario_namen
 
 # Mehr Menschen an einem Gerät werden unübersichtlich (jeder Zug braucht eine Übergabe).
 MAX_MENSCHEN = 5
+# Eigene Namen für Menschen: Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich – keine Kommas
+# (Siegerlisten werden mit „, “ getrennt) und keine Anführungszeichen (Reden stehen als Name: "…").
+NAME_MUSTER = re.compile(r"[^\W\d_][\w .-]{0,19}")
 
 
 class Fehler(Exception):
@@ -20,8 +24,9 @@ class Einstellungen:
     regeln: str
     spieler: int
     llm: str  # Zahl oder "alle" (alle Plätze ohne Mensch)
-    menschen: tuple[str, ...]  # Plätze, an denen Menschen spielen (an einem Gerät)
+    menschen: tuple[str, ...]  # Namen der Menschen in der Partie (eigener Name oder Platz)
     szenario: str | None
+    namen: tuple[str, ...] = ()  # alle Spieler in Sitzreihenfolge, Menschen mit eigenem Namen
 
     @property
     def anzahl_llm(self) -> int:
@@ -57,8 +62,23 @@ def einstellungen_pruefen(daten: dict[str, Any]) -> Einstellungen:
     szenario = daten.get("szenario") or None
     if szenario is not None and (regeln != VOLLMONDNACHT or szenario not in szenario_namen(spieler)):
         raise Fehler(f"Szenario '{szenario}' passt nicht zu {regeln} mit {spieler} Spielern")
+    # Eigene Namen gibt es nur für Menschen; LLM- und Zufallsspieler behalten ihren Platz-Namen.
+    eigene = daten.get("namen") or {}
+    if not isinstance(eigene, dict):
+        raise Fehler("Namen: Zuordnung Platz → Name erwartet")
+    for platz, name in eigene.items():
+        if platz not in menschen:
+            raise Fehler(f"Nur Menschen können einen eigenen Namen haben, nicht Platz '{platz}'")
+        if not isinstance(name, str):
+            raise Fehler(f"Name für Platz '{platz}' muss Text sein")
+        if name.strip() and not NAME_MUSTER.fullmatch(name.strip()):  # leer: Platz-Name behalten
+            raise Fehler(f"Name '{name}': 1–20 Zeichen, mit einem Buchstaben am Anfang, ohne Komma und Anführungszeichen")
+    namen = tuple((eigene.get(platz) or platz).strip() for platz in NAMEN[:spieler])
+    if len(set(namen)) != len(namen):
+        raise Fehler("Jeder Name darf nur einmal am Tisch sitzen")
     # In Sitzreihenfolge: So kommen die Übergaben in der Reihenfolge, in der die Engine fragt.
-    return Einstellungen(regeln, spieler, llm, tuple(n for n in NAMEN[:spieler] if n in menschen), szenario)
+    menschen_namen = tuple(name for platz, name in zip(NAMEN[:spieler], namen) if platz in menschen)
+    return Einstellungen(regeln, spieler, llm, menschen_namen, szenario, namen)
 
 
 def optionen(spieler: int) -> dict[str, list[str]]:

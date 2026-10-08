@@ -204,18 +204,29 @@ export function fuerGast(z, ereignisse, platz) {
   };
 }
 
+// Eigene Namen wie in web/einstellungen.py (NAME_MUSTER): Buchstabe am Anfang, höchstens 20 Zeichen,
+// keine Kommas und Anführungszeichen. Endgültig prüft Python beim Start.
+export const NAME_MUSTER = /^\p{L}[\p{L}\p{N}_ .-]{0,19}$/u;
+
 // plaetze: { Ben: "geheimes-zeichen", … } – nur wer das Zeichen seines Platzes kennt, spielt dort.
+// Vor dem Start (Warteraum) tragen Gäste ihren Namen ein; in der Partie heißt der Platz dann so.
 // api: die Schnittstelle des Gastgebers (Server oder Pyodide). nachZug(): neu abfragen.
 export function gastgeberStarten({ raum, plaetze, api, nachZug, beiAenderung }) {
   const verbunden = new Map();  // Platz -> Kanal
   const lebt = new Map();  // Platz -> Zeitpunkt des letzten Lebenszeichens
   let ereignisse = [], seed = null, letzter = null, gesendet = new Map(), status = "verbinde";
-  const melden = () => beiAenderung({ status, verbunden: new Set(verbunden.keys()) });
+  const wunsch = {};  // Platz -> Name, den der Gast im Warteraum eingetragen hat
+  let imSpiel = {};  // Platz -> Name in der laufenden Partie (beim Start festgelegt)
+  const spielname = (platz) => imSpiel[platz] || platz;
+  const melden = () => beiAenderung({ status, verbunden: new Set(verbunden.keys()), namen: { ...wunsch } });
+
+  const lobbySenden = (platz, neu = false) =>
+    verbunden.get(platz)?.senden({ typ: "lobby", name: wunsch[platz] || "", neu });
 
   const senden = (platz) => {
     const kanal = verbunden.get(platz);
     if (!kanal || !letzter) return;
-    const stand = fuerGast(letzter, ereignisse, platz);
+    const stand = fuerGast(letzter, ereignisse, spielname(platz));
     const json = JSON.stringify(stand);
     if (gesendet.get(platz) === json) return;  // nichts Neues
     gesendet.set(platz, json);
@@ -238,16 +249,23 @@ export function gastgeberStarten({ raum, plaetze, api, nachZug, beiAenderung }) 
         verbunden.set(platz, kanal);
         lebt.set(platz, Date.now());
         gesendet.delete(platz);
-        senden(platz);
+        if (letzter) senden(platz); else lobbySenden(platz);
         melden();
       } else if (!platz) {
         kanal.senden({ typ: "wer" });  // z. B. nach Neuladen des Gastgebers: Gast soll sich neu melden
       } else if (nachricht.typ === "puls") {
         // nur Lebenszeichen
+      } else if (nachricht.typ === "name") {
+        // Nur im Warteraum: In einer laufenden Partie stehen die Namen fest.
+        const name = String(nachricht.name || "").trim();
+        if (letzter || (name && !NAME_MUSTER.test(name))) return lobbySenden(platz);
+        if (name) wunsch[platz] = name; else delete wunsch[platz];
+        lobbySenden(platz);
+        melden();
       } else if (nachricht.typ === "aktion") {
         // Nur annehmen, wenn genau dieser Platz mit genau dieser Frage dran ist.
         const frage = letzter?.frage;
-        if (!frage || frage.wer !== platz || nachricht.nummer !== frage.nummer) return;
+        if (!frage || frage.wer !== spielname(platz) || nachricht.nummer !== frage.nummer) return;
         await api("/api/aktion", { tool: String(nachricht.tool), parameter: sauber(nachricht.parameter), nummer: frage.nummer });
         nachZug();
       }
@@ -275,6 +293,14 @@ export function gastgeberStarten({ raum, plaetze, api, nachZug, beiAenderung }) 
       letzter = z;
       for (const platz of verbunden.keys()) senden(platz);
     },
+    // Warteraum: Die alte Partie ist vorbei, Gäste sehen wieder ihr Namensfeld.
+    warteraum() {
+      letzter = null;
+      gesendet = new Map();
+      for (const platz of verbunden.keys()) lobbySenden(platz, true);
+    },
+    // Beim Start: unter welchem Namen jeder Platz in der Partie sitzt.
+    spielnamenSetzen(namen) { imSpiel = { ...namen }; },
     plaetzeSetzen(neu) {
       plaetze = neu;
       for (const [platz, kanal] of verbunden) if (!(platz in neu)) { kanal.schliessen(); verbunden.delete(platz); }
@@ -287,7 +313,8 @@ export function gastgeberStarten({ raum, plaetze, api, nachZug, beiAenderung }) 
 
 // Liefert ein Backend für die Seite: api(pfad, daten) wie beim Server.
 export async function gastStarten({ raum, platz, zeichen }) {
-  let stand = null, hinweis = "Verbinde mit dem Gastgeber …", kanal = null, zuletzt = 0;
+  let stand = null, hinweis = "Verbinde mit dem Gastgeber …", kanal = null, zuletzt = 0, lobbyName = null;
+  const gemerkt = () => { try { return localStorage.getItem("werwolf-gast-name") || ""; } catch { return ""; } };
 
   const verloren = () => {
     if (!kanal) return;
@@ -307,6 +334,13 @@ export async function gastStarten({ raum, platz, zeichen }) {
         zuletzt = Date.now();
         if (nachricht?.typ === "zustand") stand = nachricht.zustand;
         if (nachricht?.typ === "fehler") hinweis = nachricht.text;
+        if (nachricht?.typ === "lobby") {
+          if (nachricht.neu) stand = null;  // neue Partie in Vorbereitung
+          lobbyName = nachricht.name || "";
+          hinweis = "Verbunden. Warte, bis der Gastgeber die Partie startet …";
+          // Schon einmal einen Namen eingetragen? Dann gleich wieder melden.
+          if (!lobbyName && gemerkt()) kanal?.senden({ typ: "name", name: gemerkt() });
+        }
         if (nachricht?.typ === "wer") kanal?.senden({ typ: "hallo", platz, zeichen });
       });
       kanal.beiEnde(verloren);
@@ -329,7 +363,7 @@ export async function gastStarten({ raum, platz, zeichen }) {
       const url = new URL(pfad, location.href);
       const antwort = (status, inhalt) => ({ status, daten: inhalt });
       if (url.pathname.endsWith("/api/zustand")) {
-        if (!stand) return antwort(200, { laeuft: false, gast: true, status: hinweis });
+        if (!stand) return antwort(200, { laeuft: false, gast: true, status: hinweis, lobby: { name: lobbyName, platz } });
         const seit = Number(url.searchParams.get("seit")) || 0;
         const status = kanal ? stand.status : hinweis;
         return antwort(200, { ...stand, ereignisse: stand.ereignisse.slice(seit), status, gast: true });
@@ -337,6 +371,16 @@ export async function gastStarten({ raum, platz, zeichen }) {
       if (url.pathname.endsWith("/api/aktion")) {
         if (!kanal) return antwort(409, { fehler: "Keine Verbindung zum Gastgeber" });
         kanal.senden({ typ: "aktion", tool: daten.tool, parameter: daten.parameter, nummer: daten.nummer });
+        return antwort(200, { ok: true });
+      }
+      if (url.pathname.endsWith("/api/name")) {  // Warteraum: eigenen Namen eintragen
+        const name = String(daten?.name || "").trim();
+        if (name && !NAME_MUSTER.test(name)) {
+          return antwort(400, { fehler: "1–20 Zeichen, mit einem Buchstaben am Anfang, ohne Komma und Anführungszeichen." });
+        }
+        try { localStorage.setItem("werwolf-gast-name", name); } catch { /* egal */ }
+        if (!kanal) return antwort(409, { fehler: "Keine Verbindung zum Gastgeber" });
+        kanal.senden({ typ: "name", name });
         return antwort(200, { ok: true });
       }
       if (url.pathname.endsWith("/api/optionen")) return antwort(200, { namen: [], szenarien: [] });

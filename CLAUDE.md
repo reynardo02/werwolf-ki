@@ -106,6 +106,12 @@ Zusatz: Mitspieler per Link (Weg A, ohne eigenen Server): Ein Browser ist Gastge
   Fix nach der ersten echten Partie: Der Gast sah das Ende nicht – der Endstand (mit Protokoll und Log) war zu groß für
   den WebRTC-Kanal (je nach Browser 16–64 KB pro Nachricht) und ging still verloren. Jetzt zerlegt `stueckweise()` jede
   Nachricht in Stücke ≤ 8000 Zeichen (`zerlegen`/`zusammensetzer`), auch im Testkanal.
+Zusatz: Eigene Namen für Menschen. Einstellungen bekommen `namen` (Platz → Name, nur Menschen, NAME_MUSTER: 1–20 Zeichen,
+  Buchstabe am Anfang, kein Komma/Anführungszeichen, jeder Name nur einmal); die Partie läuft mit diesen Namen (Engine, LLMs,
+  Chat, Log) – `Einstellungen.namen` ersetzt NAMEN[:spieler], `partie_spielen(namen=…)`. Plätze bleiben die interne Adresse
+  (Links, Zeichen). Mit Gästen öffnet „Partie starten“ erst einen Warteraum: Gäste tragen dort ihren Namen ein (`typ: "name"`,
+  im Gast-Browser gemerkt), der Gastgeber sieht „Clara → David“ und startet mit „Jetzt starten“. Danach filtert der Gastgeber
+  nach dem Spielnamen (`spielnamenSetzen`).
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).

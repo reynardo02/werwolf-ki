@@ -54,6 +54,7 @@ def partie_spielen(
     beobachter_extra: Callable[[Ereignis], None] | None = None,
     konsole: bool = True,
     engine_gebaut: Callable[[Any, dict[str, str]], None] | None = None,
+    namen: Sequence[str] | None = None,
 ) -> str:
     """Spielt eine Partie, schreibt Protokoll (.txt) und Log (.jsonl), gibt eine Kurzfassung zurück.
 
@@ -66,7 +67,7 @@ def partie_spielen(
     z. B. damit die Web-Oberfläche dir deine Karte und dein Wissen zeigen kann, ohne dass du gefragt wirst.
     """
     rng = random.Random(seed)
-    namen = NAMEN[:anzahl_spieler]
+    namen = list(namen) if namen else NAMEN[:anzahl_spieler]  # eigene Namen der Menschen (Browser)
     if client:
         # Statistik und Budget gelten pro Partie.
         client.statistik = Statistik()

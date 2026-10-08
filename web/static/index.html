@@ -56,6 +56,15 @@
   /* Einstieg: Bevor der Chat erscheint, liegt deine Karte groß in der Mitte. */
   /* Vorhang: Mehrere Menschen an einem Gerät – erst wenn die richtige Person „Ich bin …“ tippt,
      erscheint Geheimes. Solange sind Chat, Zug und Karte verdeckt. */
+  #warteraum, #gast-warteraum { display: none; flex-direction: column; align-items: stretch; max-width: 34em; margin: 0 auto; width: 100%; }
+  #warteraum h2, #gast-warteraum h2 { font-size: 1.3rem; }
+  body.warteraum #warteraum, body.gastwarteraum #gast-warteraum { display: flex; }
+  body.warteraum #tisch, body.warteraum #zug, body.warteraum #status, body.warteraum #tisch-bereich > h2, body.warteraum #du,
+  body.gastwarteraum #tisch, body.gastwarteraum #zug, body.gastwarteraum #status, body.gastwarteraum #tisch-bereich > h2,
+  body.gastwarteraum #du { display: none; }
+  body.laeuft #warteraum, body.laeuft #gast-warteraum { flex: 1; min-height: 0; overflow-y: auto; }
+  .namen-feld { display: grid; grid-template-columns: 5em 1fr; gap: 6px; align-items: center; margin-top: 4px; }
+  .namen-feld label { margin: 0; }
   #einstieg, #vorhang, #morgen { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
   #einstieg .karte { width: min(240px, 60vw, calc(var(--hoehe, 100dvh) * .4)); margin-bottom: 12px; }
   #einstieg .karte-tipp, #vorhang p { max-width: 32em; }
@@ -165,6 +174,26 @@
       <ul id="morgen-wissen" class="wissen"></ul>
       <button id="morgen-weiter" type="button"></button>
     </div>
+    <!-- Warteraum des Gastgebers: Gäste kommen dazu und tragen ihren Namen ein, dann „Jetzt starten“. -->
+    <div id="warteraum">
+      <h2>Warteraum</h2>
+      <p style="margin-top:0">Schick jedem seinen Link. Wer ihn öffnet, trägt dort seinen Namen ein.</p>
+      <div id="warteraum-liste"></div>
+      <p id="warteraum-hinweis" class="leer"></p>
+      <button id="warteraum-start" type="button">Jetzt starten</button>
+    </div>
+    <!-- Warteraum des Gastes: eigenen Namen eintragen, bis der Gastgeber startet. -->
+    <div id="gast-warteraum">
+      <h2>Warteraum</h2>
+      <p style="margin-top:0">Du spielst per Link mit, auf dem Platz <b id="gast-platz"></b>.</p>
+      <label for="gast-name">Dein Name</label>
+      <div class="zeile" style="grid-template-columns: 1fr auto">
+        <input id="gast-name" maxlength="20" autocomplete="nickname">
+        <button id="gast-name-ok" type="button" style="margin:0">Übernehmen</button>
+      </div>
+      <p id="gast-name-status" class="leer"></p>
+      <p id="gast-warte" class="warten"></p>
+    </div>
     <!-- Übergabe bei mehreren Menschen an einem Gerät. -->
     <div id="vorhang">
       <h2 id="vorhang-titel"></h2>
@@ -220,6 +249,10 @@
         <div id="plaetze" class="plaetze"></div>
         <label>Davon per Link (spielen auf ihrem eigenen Gerät)</label>
         <div id="fern-plaetze" class="plaetze"></div>
+        <div id="namen-bereich">
+          <label>Eure Namen (leer lassen: Platz-Name)</label>
+          <div id="namen-felder"></div>
+        </div>
         <div id="szenario-feld">
           <label for="szenario">Szenario</label>
           <select id="szenario"></select>
@@ -602,6 +635,7 @@ function plaetzePruefen() {
     label.append(feld, name);
     return label;
   }));
+  namenFelder();
   const frei = Number($("spieler").value) - zahl;
   fuellen($("llm"), ["alle", ...Array.from({ length: frei + 1 }, (_, i) => String(i))],
           (w) => (w === "alle" ? "alle anderen" : w === "0" ? "keine (nur MockAgenten)" : w));
@@ -610,6 +644,32 @@ $("plaetze").addEventListener("change", plaetzePruefen);
 function gewaehlteFern() {
   return [...$("fern-plaetze").querySelectorAll("input:checked")].map((feld) => feld.value);
 }
+// Eigene Namen für die Menschen an diesem Gerät (Gäste tragen ihren im Warteraum ein).
+const NAMEN_GEMERKT = "werwolf-namen";
+function gemerkteNamen() {
+  try { return JSON.parse(localStorage.getItem(NAMEN_GEMERKT) || "{}"); } catch { return {}; }
+}
+function namenFelder() {
+  const alt = { ...gemerkteNamen(), ...eigeneNamen() };
+  const fernSet = new Set(gewaehlteFern());
+  const hier = gewaehltePlaetze().filter((p) => !fernSet.has(p));
+  $("namen-bereich").hidden = !hier.length;
+  $("namen-felder").replaceChildren(...hier.map((platz) => {
+    const zeile = Object.assign(document.createElement("div"), { className: "namen-feld" });
+    const feld = Object.assign(document.createElement("input"), {
+      id: `name-${platz}`, maxLength: 20, placeholder: platz, value: alt[platz] || "", autocomplete: "off" });
+    feld.dataset.platz = platz;
+    zeile.append(Object.assign(document.createElement("label"), { htmlFor: feld.id, textContent: platz }), feld);
+    return zeile;
+  }));
+}
+function eigeneNamen() {
+  const namen = Object.fromEntries([...$("namen-felder").querySelectorAll("input")]
+    .filter((feld) => feld.value.trim()).map((feld) => [feld.dataset.platz, feld.value.trim()]));
+  try { localStorage.setItem(NAMEN_GEMERKT, JSON.stringify({ ...gemerkteNamen(), ...namen })); } catch { /* egal */ }
+  return namen;
+}
+$("fern-plaetze").addEventListener("change", namenFelder);
 
 function fuellen(select, werte, text = (w) => w) {
   const alt = select.value;
@@ -625,13 +685,30 @@ $("neu").addEventListener("submit", async (e) => {
   const daten = {
     regeln: $("regeln").value, spieler: Number($("spieler").value), llm: $("llm").value,
     menschen: gewaehltePlaetze(), szenario: $("regeln").value === "vollmondnacht" ? $("szenario").value : null,
+    namen: eigeneNamen(),
   };
+  const plaetze = gewaehlteFern();
+  if (plaetze.length) {  // Mit Gästen: erst Warteraum, dort tragen sie ihre Namen ein.
+    await gastgeberEinrichten(plaetze);
+    warteraumOeffnen(daten);
+    return;
+  }
+  await partieStarten(daten, []);
+});
+
+async function partieStarten(daten, plaetze) {
+  // Namen der Gäste aus dem Warteraum dazu (leer: Platz-Name).
+  const gaeste = Object.fromEntries(plaetze.filter((p) => einladung.namen?.[p]).map((p) => [p, einladung.namen[p]]));
+  daten = { ...daten, namen: { ...daten.namen, ...gaeste } };
   const antwort = await api("/api/neu", daten);
-  if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
-  await gastgeberEinrichten(gewaehlteFern());
+  if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return false; }
+  warteraum = null;
+  document.body.classList.remove("warteraum");
+  await gastgeberEinrichten(plaetze, gastgeberLesen(), gaeste);
   neuAufsetzen();
   abfragen();
-});
+  return true;
+}
 
 // Alles zurück auf Anfang – für eine neue Partie (auch, wenn der Gastgeber eine startet).
 function neuAufsetzen() {
@@ -649,32 +726,38 @@ function neuAufsetzen() {
 // --- Gastgeber: Mitspieler per Link ----------------------------------------
 // Die Partie läuft hier; Gäste verbinden sich über ihren Link (siehe mehrspieler.js).
 // Raum und Zeichen bleiben über Partien hinweg gleich – so gelten die Links weiter.
-let fern = new Set(), gastgeber = null, einladung = { verbunden: new Set(), status: "" };
+// fernPlaetze: Plätze per Link (für Links und Zeichen); fern: ihre Namen in der laufenden Partie.
+let fernPlaetze = [], fern = new Set(), spielnameVon = {}, gastgeber = null, gastgeberInfo = null, warteraum = null;
+let einladung = { verbunden: new Set(), status: "", namen: {} };
 const GASTGEBER = "werwolf-gastgeber";
 
 function gastgeberLesen() {
   try { return JSON.parse(localStorage.getItem(GASTGEBER) || "null"); } catch { return null; }
 }
 
-async function gastgeberEinrichten(plaetze, gespeichert = gastgeberLesen()) {
-  fern = new Set(plaetze);
-  $("einladung").hidden = !fern.size;
-  if (!fern.size) {  // Partie ohne Gäste: Raum und Zeichen bleiben für später, aber niemand ist „per Link“.
+// plaetze: Plätze per Link; namen: wie sie in der Partie heißen (leer: noch keine Partie, z. B. Warteraum).
+async function gastgeberEinrichten(plaetze, gespeichert = gastgeberLesen(), namen = gespeichert?.namen || {}) {
+  fernPlaetze = [...plaetze];
+  spielnameVon = Object.fromEntries(fernPlaetze.map((p) => [p, namen[p] || p]));
+  fern = new Set(Object.values(spielnameVon));
+  $("einladung").hidden = !fernPlaetze.length;
+  if (!fernPlaetze.length) {  // Partie ohne Gäste: Raum und Zeichen bleiben für später, aber niemand ist „per Link“.
     gastgeber?.plaetzeSetzen({});
-    if (gespeichert) try { localStorage.setItem(GASTGEBER, JSON.stringify({ ...gespeichert, fern: [] })); } catch { /* egal */ }
+    if (gespeichert) try { localStorage.setItem(GASTGEBER, JSON.stringify({ ...gespeichert, fern: [], namen: {} })); } catch { /* egal */ }
     return;
   }
   const mehrspieler = await mehrspielerLaden();
-  const info = { raum: gespeichert?.raum || mehrspieler.neuerRaum(), zeichen: {} };
-  for (const platz of fern) info.zeichen[platz] = gespeichert?.zeichen?.[platz] || mehrspieler.neuesZeichen();
-  info.fern = [...fern];
+  const info = { raum: gespeichert?.raum || mehrspieler.neuerRaum(), zeichen: {}, fern: fernPlaetze, namen: spielnameVon };
+  for (const platz of fernPlaetze) info.zeichen[platz] = gespeichert?.zeichen?.[platz] || mehrspieler.neuesZeichen();
+  gastgeberInfo = info;
   try { localStorage.setItem(GASTGEBER, JSON.stringify(info)); } catch { /* dann gelten die Links nur bis zum Neuladen */ }
   if (gastgeber && gespeichert?.raum === info.raum) gastgeber.plaetzeSetzen(info.zeichen);
   else gastgeber = mehrspieler.gastgeberStarten({
     raum: info.raum, plaetze: info.zeichen, api, nachZug: () => abfragen(),
-    beiAenderung: (neu) => { einladung = neu; einladungZeigen(info); },
+    beiAenderung: (neu) => { einladung = neu; einladungZeigen(); },
   });
-  einladungZeigen(info);
+  gastgeber.spielnamenSetzen(spielnameVon);
+  einladungZeigen();
 }
 
 // Nach dem Neuladen: Lief eine Partie mit Gästen, den Raum wieder öffnen.
@@ -683,14 +766,29 @@ async function gastgeberFortsetzen() {
   if (info?.fern?.length) await gastgeberEinrichten(info.fern, info);
 }
 
-function einladungZeigen(info) {
+// Warteraum: Die Partie startet erst, wenn du auf „Jetzt starten“ tippst – bis dahin tragen Gäste ihre Namen ein.
+function warteraumOeffnen(daten) {
+  warteraum = daten;
+  clearTimeout(timer);  // die alte Partie nicht weiter anzeigen
+  gastgeber.warteraum();
+  document.body.classList.add("laeuft", "warteraum");
+  document.body.classList.remove("einstieg", "vorhang", "morgen");
+  $("kopfzeile").textContent = "Warteraum";
+  $("status").textContent = "";
+  $("banner").replaceChildren();
+  einladungZeigen();
+}
+$("warteraum-start").addEventListener("click", () => partieStarten(warteraum, fernPlaetze));
+
+function einladungZeigen(info = gastgeberInfo) {
+  if (!info) return;
   const basis = `${location.origin}${location.pathname}${location.search}`;
-  $("einladung-liste").replaceChildren(...[...fern].map((platz) => {
+  const bloecke = () => fernPlaetze.map((platz) => {
     const link = `${basis}#gast=${info.raum}.${encodeURIComponent(platz)}.${info.zeichen[platz]}`;
-    const da = einladung.verbunden.has(platz);
+    const da = einladung.verbunden.has(platz), name = einladung.namen?.[platz];
     const block = Object.assign(document.createElement("div"), { className: "einladung" });
     const kopf = Object.assign(document.createElement("div"), { className: "kopf" });
-    kopf.append(platz, Object.assign(document.createElement("span"), {
+    kopf.append(name ? `${platz} → ${name}` : platz, Object.assign(document.createElement("span"), {
       className: da ? "da" : "fehlt", textContent: da ? "verbunden" : "noch nicht da" }));
     const feld = Object.assign(document.createElement("input"), { value: link, readOnly: true });
     const kopieren = Object.assign(document.createElement("button"), { type: "button", textContent: "Kopieren" });
@@ -706,17 +804,47 @@ function einladungZeigen(info) {
     }
     block.append(kopf, zeile);
     return block;
-  }));
+  });
+  $("einladung-liste").replaceChildren(...bloecke());
+  $("warteraum-liste").replaceChildren(...bloecke());  // im Warteraum auch mittig (am Handy ist die Seitenleiste zu)
   const status = { bereit: "", warte: "Raum wird wieder geöffnet …", getrennt: "Verbindung zum Vermittler unterbrochen – verbinde neu …",
                    verbinde: "Öffne den Raum …" }[einladung.status];
   $("einladung-status").textContent = status ?? (einladung.status ? `Problem mit der Verbindung (${einladung.status}).` : "");
+  const fehlen = fernPlaetze.filter((p) => !einladung.verbunden.has(p));
+  $("warteraum-hinweis").textContent = fehlen.length
+    ? `Noch nicht da: ${fehlen.join(", ")}. Du kannst trotzdem starten – wer später kommt, steigt ein.`
+    : "Alle sind da.";
 }
+
+// Gast: Solange der Gastgeber keine Partie gestartet hat, zeigt die Seite das Namensfeld.
+function gastWarteraum(z) {
+  const warten = !z.laeuft;
+  if (warten && seed !== null) neuAufsetzen();  // Gastgeber bereitet eine neue Partie vor: alte weg
+  document.body.classList.toggle("gastwarteraum", warten);
+  if (!warten) return;
+  $("gast-platz").textContent = GAST.platz;
+  $("gast-warte").textContent = z.status || "";
+  const name = z.lobby?.name;
+  if (name !== null && name !== undefined && document.activeElement !== $("gast-name") && !$("gast-name").dataset.bearbeitet) {
+    $("gast-name").value = name;
+  }
+  $("gast-name").placeholder = GAST.platz;
+  $("gast-name-status").textContent = name ? `Der Gastgeber sieht dich als „${name}“.` : "Noch kein Name eingetragen – dann heißt du wie dein Platz.";
+}
+$("gast-name").addEventListener("input", () => { $("gast-name").dataset.bearbeitet = "1"; });
+$("gast-name-ok").addEventListener("click", async () => {
+  const antwort = await api("/api/name", { name: $("gast-name").value });
+  delete $("gast-name").dataset.bearbeitet;
+  if (antwort.status !== 200) $("gast-name-status").textContent = antwort.daten.fehler;
+});
+$("gast-name").addEventListener("keydown", (e) => { if (e.key === "Enter") $("gast-name-ok").click(); });
 
 // Status über dem Chat: Wartet die Partie auf einen Gast, sagen wir das.
 function statusText(z) {
   const wer = z.frage?.wer;
   if (wer && fern.has(wer) && !z.ende) {
-    return einladung.verbunden.has(wer) ? `${wer} (per Link) ist dran …`
+    const platz = fernPlaetze.find((p) => spielnameVon[p] === wer);
+    return einladung.verbunden.has(platz) ? `${wer} (per Link) ist dran …`
       : `Warte auf ${wer} – noch nicht verbunden. Den Link findest du unter „Mitspieler per Link“${MOBIL.matches ? " (Menü)" : ""}.`;
   }
   return z.status || "";
@@ -725,8 +853,10 @@ function statusText(z) {
 // --- Abfragen (Polling) ---------------------------------------------------
 async function abfragen() {
   clearTimeout(timer);
+  if (warteraum) return;  // Gastgeber im Warteraum: noch keine Partie
   try {
     const z = (await api(`/api/zustand?seit=${anzahl}`)).daten;
+    if (z.gast) gastWarteraum(z);
     if (z.laeuft) zeichnen(z);
     $("status").textContent = statusText(z);
     if ((z.laeuft && !z.ende && !z.fehler) || z.gast) timer = setTimeout(abfragen, backend ? 300 : 1000);
