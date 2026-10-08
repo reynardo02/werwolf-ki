@@ -226,7 +226,8 @@ def test_doppelgaengerin_als_schlaflose_wacht_zuletzt() -> None:
     agenten["Anna"].nacht = Aktion(NACHAHMEN, {"ziel": "Ben"})
     e = engine(verteilung, [R.DORFBEWOHNER, R.RAEUBER, R.UNRUHESTIFTERIN], agenten)
     e.spielen()
-    assert e.spieler["Anna"].wissen[-1] == "Am Ende der Nacht liegt diese Karte vor dir: Doppelgängerin."
+    # Ihre Karte zählt als die Kopie – also sieht sie „Schlaflose“, nicht „Doppelgängerin“.
+    assert e.spieler["Anna"].wissen[-1] == "Am Ende der Nacht liegt diese Karte vor dir: Schlaflose."
 
 
 def test_wer_die_doppelgaengerin_karte_bekommt_uebernimmt_die_kopie() -> None:

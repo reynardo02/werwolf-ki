@@ -201,6 +201,9 @@ class VollmondEngine:
         aktion = self._fragen(dg, Phase.NACHT, {NACHAHMEN: {"ziel": self._andere(dg)}})
         ziel = aktion.parameter["ziel"]
         self.kopie = self.karten[ziel]
+        # Ihre Karte zählt ab jetzt als die Kopie – das weiß sie. Ohne das bekam eine Doppel-Gerberin
+        # den Ehrlichkeits-Hinweis des Dorfs und sagte offen, dass sie jetzt Gerber ist.
+        dg.bekannte_karte = self.kopie
         dg.wissen.append(
             f"Du hast die Karte von {ziel} angesehen: {self.kopie.value}. Du bist jetzt "
             f"{self.kopie.value} und gehörst zur Partei {self.kopie.partei.value}."
@@ -274,7 +277,7 @@ class VollmondEngine:
         aktion = self._nachtfrage(raeuber, self._optionen_raeuber(raeuber))
         ziel = aktion.parameter["ziel"]
         self._tauschen(raeuber.name, ziel)
-        neu = self.karten[raeuber.name]
+        neu = self.rolle(self.karten[raeuber.name])  # die Doppelgängerin-Karte zählt als ihre Kopie
         raeuber.bekannte_karte = neu
         raeuber.wissen.append(
             f"Du hast deine Karte mit {ziel} getauscht. Deine neue Karte: {neu.value}. "
@@ -321,7 +324,7 @@ class VollmondEngine:
         self._nachtaktion(betrunkener, "mitte_tauschen", karte=str(nummer + 1))
 
     def _schlaflose(self, schlaflose: Spieler) -> None:
-        karte = self.karten[schlaflose.name]
+        karte = self.rolle(self.karten[schlaflose.name])  # die Doppelgängerin-Karte zählt als ihre Kopie
         schlaflose.bekannte_karte = karte
         schlaflose.wissen.append(f"Am Ende der Nacht liegt diese Karte vor dir: {karte.value}.")
         self._nachtaktion(schlaflose, "eigene_karte_ansehen", ergebnis=karte.value)

@@ -78,7 +78,10 @@ def test_nur_werwoelfe_und_gerber_duerfen_luegen() -> None:
             assert LUEGEN in hinweis and EHRLICH not in hinweis, rolle
             assert KARTENWEG not in hinweis, rolle  # nur das Dorf bekommt den Hinweis
         elif rolle is Rolle.DOPPELGAENGERIN:
-            assert "darfst du lügen" in hinweis  # hängt von der Kopie ab
+            assert LUEGEN not in hinweis and EHRLICH not in hinweis  # hängt erst von der Kopie ab
+            for kopie in (Rolle.WERWOLF, Rolle.GUENSTLING, Rolle.GERBER):
+                assert LUEGEN in rollen_hinweis(rolle, kopie) and EHRLICH not in rollen_hinweis(rolle, kopie)
+            assert EHRLICH in rollen_hinweis(rolle, Rolle.SEHERIN) and KARTENWEG in rollen_hinweis(rolle, Rolle.SEHERIN)
         else:
             assert EHRLICH in hinweis and LUEGEN not in hinweis, rolle
             assert KARTENWEG in hinweis, rolle
@@ -304,3 +307,27 @@ def test_regeln_beraubte_nennen_zu_recht_ihre_startkarte() -> None:
     assert "nennt zu Recht seine Startkarte" in system
     assert "bestätigt diese Startkarte" in system
     assert "Schlaflose, die vorher vertauscht\n  wurde, sieht am Ende die Karte" in system
+
+
+def test_doppel_gerberin_spielt_wie_der_gerber_und_verraet_sich_nicht() -> None:
+    # Eigene Partie: Die Doppelgängerin ahmte den Gerber nach und sagte offen „ich bin jetzt Gerber“.
+    from werwolf.vollmondnacht.llm_spieler import EHRLICH, LUEGEN, NICHT_VERRATEN, ROLLEN_HINWEISE
+
+    client = FakeClient()  # wählt beim Nachahmen den ersten Namen – mit fester Reihenfolge: Ben
+    verteilung = {"Anna": Rolle.DOPPELGAENGERIN, "Ben": Rolle.GERBER, "Clara": Rolle.DORFBEWOHNER}
+    mitte = [Rolle.WERWOLF, Rolle.SEHERIN, Rolle.DORFBEWOHNER]
+    agenten = {n: VollmondLLMSpieler(client, "ruhig") for n in verteilung}
+    agenten["Anna"].gemischt = lambda namen: sorted(namen)  # Ben vor Clara
+    e = VollmondEngine(agenten, list(verteilung.values()) + mitte, rng=random.Random(0),
+                       verteilung=verteilung, mitte=mitte)
+    e.spielen()
+    assert e.kopie is Rolle.GERBER and e.spieler["Anna"].bekannte_karte is Rolle.GERBER
+
+    reden = [(system, nachricht) for system, nachricht, tools in client.anfragen_liste
+             if tools[0].name == "sprechen" and "Du bist Anna" in system]
+    assert reden
+    for system, nachricht in reden:
+        assert ROLLEN_HINWEISE[Rolle.GERBER] in system  # Strategie des Gerbers
+        assert LUEGEN in system and EHRLICH not in system  # darf lügen, kein Ehrlichkeits-Hinweis
+        assert NICHT_VERRATEN.format(karte="Gerber").strip() in nachricht  # „verrate das auf keinen Fall“
+
