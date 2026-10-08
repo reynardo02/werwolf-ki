@@ -94,6 +94,15 @@ Zusatz: Morgen-Bildschirm (Vollmondnacht, auch allein): Nach der Nacht sieht jed
   hat (Werwolf-Partner bzw. Mittelkarte, Seherin-Blick, Tausch) – Räuber und Schlaflose groß mit der Karte, die jetzt vor
   ihnen liegt. Das Wissen kommt live aus der Engine (`wissen`/`bekannte_karte`, `geheimes()` in web/sitzung.py), nicht erst
   beim nächsten Zug. Erst nach der Nacht, weil reihum eingesammelte Entscheidungen erst dann ausgeführt sind.
+Zusatz: Mitspieler per Link (Weg A, ohne eigenen Server): Ein Browser ist Gastgeber und spielt die Partie (Pyodide oder
+  lokaler Server, sein API-Key); Plätze unter „Davon per Link“ spielen auf eigenen Geräten. web/static/mehrspieler.js:
+  `fuerGast()` schickt jedem Gast nur Öffentliches plus Karte/Wissen/Frage seines Platzes, Züge nur vom gefragten Platz
+  (`sauber()` gegen kaputte Parameter). Für die Seite ist ein Gast ein Backend wie pyodide-backend.js (#gast=raum.platz.zeichen).
+  Verbindung: WebRTC über PeerJS 1.5.4 (web/static/peerjs.min.js, MIT, aus npm statt CDN; Vermittler 0.peerjs.com, TURN von
+  PeerJS). Herzschlag alle 4 s, nach 12 s Stille Neuverbindung – auch Neuladen von Gast und Gastgeber klappt. Raum und Zeichen
+  bleiben in localStorage („werwolf-gastgeber“), Links gelten auch für die nächste Partie. Test ohne Internet: `?verbindung=lokal`
+  (BroadcastChannel, zwei Tabs) – so per Playwright geprüft; PeerJS übers echte Netz war hier nicht testbar (Proxy).
+  tests/test_mehrspieler.py prüft die Filter mit Node.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).

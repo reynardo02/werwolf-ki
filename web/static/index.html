@@ -66,6 +66,13 @@
   body.einstieg #tisch, body.einstieg #zug, body.einstieg #status, body.einstieg #tisch-bereich > h2, body.einstieg #du,
   body.vorhang #tisch, body.vorhang #zug, body.vorhang #status, body.vorhang #tisch-bereich > h2, body.vorhang #du,
   body.morgen #tisch, body.morgen #zug, body.morgen #status, body.morgen #tisch-bereich > h2, body.morgen #du { display: none; }
+  .einladung { margin: 10px 0; }
+  .einladung .kopf { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+  .einladung .da { color: var(--gut); font-weight: 400; }
+  .einladung .fehlt { color: var(--leise); font-weight: 400; }
+  .einladung .zeile { display: flex; gap: 6px; margin-top: 4px; }
+  .einladung input { font-size: .8rem; }
+  .einladung button { margin: 0; padding: 6px 10px; }
   .plaetze { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .plaetze label { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--text); font-size: .95rem; }
   .plaetze input { width: auto; }
@@ -170,6 +177,13 @@
 
   <div id="seite">
     <div id="blatt-kopf" hidden><button id="blatt-zu" type="button">Zurück zum Tisch</button></div>
+    <section id="einladung" hidden style="margin-bottom:16px">
+      <h2>Mitspieler per Link</h2>
+      <p class="leer" style="margin:0">Schick jedem seinen Link. Wer ihn öffnet, spielt auf dem eigenen Gerät mit –
+        deine Seite muss dafür offen bleiben.</p>
+      <div id="einladung-liste"></div>
+      <p id="einladung-status" class="leer" style="margin:0; font-size:.85rem"></p>
+    </section>
     <section id="du" hidden>
       <h2 id="du-titel">Du</h2>
       <div id="rolle-titel" class="leer"></div>
@@ -184,7 +198,7 @@
       <ul id="wissen" class="wissen"></ul>
     </section>
 
-    <section style="margin-top:16px">
+    <section id="neu-bereich" style="margin-top:16px">
       <h2>Neue Partie</h2>
       <form id="neu">
         <label for="regeln">Regeln</label>
@@ -204,6 +218,8 @@
         </div>
         <label>Menschen an diesem Gerät <span id="menschen-zahl"></span></label>
         <div id="plaetze" class="plaetze"></div>
+        <label>Davon per Link (spielen auf ihrem eigenen Gerät)</label>
+        <div id="fern-plaetze" class="plaetze"></div>
         <div id="szenario-feld">
           <label for="szenario">Szenario</label>
           <select id="szenario"></select>
@@ -262,7 +278,20 @@ async function api(pfad, daten) {
   return { status: antwort.status, daten: await antwort.json() };
 }
 
+// Gast: Die Seite wurde über einen Einladungslink geöffnet (#gast=raum.platz.zeichen).
+const GAST = (() => {
+  const treffer = location.hash.match(/^#gast=([\w-]+)\.([^.]+)\.(\w+)$/);
+  return treffer ? { raum: treffer[1], platz: decodeURIComponent(treffer[2]), zeichen: treffer[3] } : null;
+})();
+const mehrspielerLaden = () => import("./mehrspieler.js");
+
 async function modusErkennen() {
+  if (GAST) {  // Kein Python nötig: Die Partie läuft beim Gastgeber.
+    $("neu-bereich").hidden = true;
+    $("kopfzeile").textContent = `Du spielst als ${GAST.platz} (per Link)`;
+    backend = await (await mehrspielerLaden()).gastStarten(GAST);
+    return;
+  }
   // Die GitHub-Pages-Fassung ist beim Bauen markiert (web/seite_bauen.py) – dort gar nicht erst fragen.
   const nurBrowser = document.querySelector('meta[name="werwolf-modus"][content="browser"]');
   if (!nurBrowser) try {
@@ -565,11 +594,22 @@ function plaetzePruefen() {
     feld.disabled = feld.checked ? zahl === 1 : zahl >= MAX_MENSCHEN;
   }
   $("menschen-zahl").textContent = `(${zahl})`;
+  // Per Link spielen kann nur, wer als Mensch angekreuzt ist.
+  const fernAlt = new Set(gewaehlteFern());
+  $("fern-plaetze").replaceChildren(...gewaehltePlaetze().map((name) => {
+    const feld = Object.assign(document.createElement("input"), { type: "checkbox", value: name, checked: fernAlt.has(name) });
+    const label = document.createElement("label");
+    label.append(feld, name);
+    return label;
+  }));
   const frei = Number($("spieler").value) - zahl;
   fuellen($("llm"), ["alle", ...Array.from({ length: frei + 1 }, (_, i) => String(i))],
           (w) => (w === "alle" ? "alle anderen" : w === "0" ? "keine (nur MockAgenten)" : w));
 }
 $("plaetze").addEventListener("change", plaetzePruefen);
+function gewaehlteFern() {
+  return [...$("fern-plaetze").querySelectorAll("input:checked")].map((feld) => feld.value);
+}
 
 function fuellen(select, werte, text = (w) => w) {
   const alt = select.value;
@@ -588,6 +628,13 @@ $("neu").addEventListener("submit", async (e) => {
   };
   const antwort = await api("/api/neu", daten);
   if (antwort.status !== 200) { zeigeBanner(antwort.daten.fehler, "fehler"); return; }
+  await gastgeberEinrichten(gewaehlteFern());
+  neuAufsetzen();
+  abfragen();
+});
+
+// Alles zurück auf Anfang – für eine neue Partie (auch, wenn der Gastgeber eine startet).
+function neuAufsetzen() {
   anzahl = 0; letztePhase = null; amEnde = true; spielEnde = false;
   menschen = []; karten = {}; jetztKarten = {}; wissenVon = {}; aktiv = null; zuletzt = null; frage = null; seed = null;
   gesehen = new Set(); morgenGesehen = new Set(); tagDa = false;
@@ -597,8 +644,83 @@ $("neu").addEventListener("submit", async (e) => {
   blattOeffnen(false);
   $("tisch").replaceChildren();
   $("banner").replaceChildren();
-  abfragen();
-});
+}
+
+// --- Gastgeber: Mitspieler per Link ----------------------------------------
+// Die Partie läuft hier; Gäste verbinden sich über ihren Link (siehe mehrspieler.js).
+// Raum und Zeichen bleiben über Partien hinweg gleich – so gelten die Links weiter.
+let fern = new Set(), gastgeber = null, einladung = { verbunden: new Set(), status: "" };
+const GASTGEBER = "werwolf-gastgeber";
+
+function gastgeberLesen() {
+  try { return JSON.parse(localStorage.getItem(GASTGEBER) || "null"); } catch { return null; }
+}
+
+async function gastgeberEinrichten(plaetze, gespeichert = gastgeberLesen()) {
+  fern = new Set(plaetze);
+  $("einladung").hidden = !fern.size;
+  if (!fern.size) {  // Partie ohne Gäste: Raum und Zeichen bleiben für später, aber niemand ist „per Link“.
+    gastgeber?.plaetzeSetzen({});
+    if (gespeichert) try { localStorage.setItem(GASTGEBER, JSON.stringify({ ...gespeichert, fern: [] })); } catch { /* egal */ }
+    return;
+  }
+  const mehrspieler = await mehrspielerLaden();
+  const info = { raum: gespeichert?.raum || mehrspieler.neuerRaum(), zeichen: {} };
+  for (const platz of fern) info.zeichen[platz] = gespeichert?.zeichen?.[platz] || mehrspieler.neuesZeichen();
+  info.fern = [...fern];
+  try { localStorage.setItem(GASTGEBER, JSON.stringify(info)); } catch { /* dann gelten die Links nur bis zum Neuladen */ }
+  if (gastgeber && gespeichert?.raum === info.raum) gastgeber.plaetzeSetzen(info.zeichen);
+  else gastgeber = mehrspieler.gastgeberStarten({
+    raum: info.raum, plaetze: info.zeichen, api, nachZug: () => abfragen(),
+    beiAenderung: (neu) => { einladung = neu; einladungZeigen(info); },
+  });
+  einladungZeigen(info);
+}
+
+// Nach dem Neuladen: Lief eine Partie mit Gästen, den Raum wieder öffnen.
+async function gastgeberFortsetzen() {
+  const info = gastgeberLesen();
+  if (info?.fern?.length) await gastgeberEinrichten(info.fern, info);
+}
+
+function einladungZeigen(info) {
+  const basis = `${location.origin}${location.pathname}${location.search}`;
+  $("einladung-liste").replaceChildren(...[...fern].map((platz) => {
+    const link = `${basis}#gast=${info.raum}.${encodeURIComponent(platz)}.${info.zeichen[platz]}`;
+    const da = einladung.verbunden.has(platz);
+    const block = Object.assign(document.createElement("div"), { className: "einladung" });
+    const kopf = Object.assign(document.createElement("div"), { className: "kopf" });
+    kopf.append(platz, Object.assign(document.createElement("span"), {
+      className: da ? "da" : "fehlt", textContent: da ? "verbunden" : "noch nicht da" }));
+    const feld = Object.assign(document.createElement("input"), { value: link, readOnly: true });
+    const kopieren = Object.assign(document.createElement("button"), { type: "button", textContent: "Kopieren" });
+    kopieren.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(link); kopieren.textContent = "Kopiert"; } catch { feld.select(); }
+    });
+    const zeile = Object.assign(document.createElement("div"), { className: "zeile" });
+    zeile.append(feld, kopieren);
+    if (navigator.share) {  // Handy: direkt per Messenger teilen
+      const teilen = Object.assign(document.createElement("button"), { type: "button", textContent: "Teilen" });
+      teilen.addEventListener("click", () => navigator.share({ title: "Werwolf-KI", text: `Spiel mit als ${platz}:`, url: link }).catch(() => {}));
+      zeile.append(teilen);
+    }
+    block.append(kopf, zeile);
+    return block;
+  }));
+  const status = { bereit: "", warte: "Raum wird wieder geöffnet …", getrennt: "Verbindung zum Vermittler unterbrochen – verbinde neu …",
+                   verbinde: "Öffne den Raum …" }[einladung.status];
+  $("einladung-status").textContent = status ?? (einladung.status ? `Problem mit der Verbindung (${einladung.status}).` : "");
+}
+
+// Status über dem Chat: Wartet die Partie auf einen Gast, sagen wir das.
+function statusText(z) {
+  const wer = z.frage?.wer;
+  if (wer && fern.has(wer) && !z.ende) {
+    return einladung.verbunden.has(wer) ? `${wer} (per Link) ist dran …`
+      : `Warte auf ${wer} – noch nicht verbunden. Den Link findest du unter „Mitspieler per Link“${MOBIL.matches ? " (Menü)" : ""}.`;
+  }
+  return z.status || "";
+}
 
 // --- Abfragen (Polling) ---------------------------------------------------
 async function abfragen() {
@@ -606,27 +728,37 @@ async function abfragen() {
   try {
     const z = (await api(`/api/zustand?seit=${anzahl}`)).daten;
     if (z.laeuft) zeichnen(z);
-    $("status").textContent = z.status || "";
-    if (z.laeuft && !z.ende && !z.fehler) timer = setTimeout(abfragen, backend ? 300 : 1000);
+    $("status").textContent = statusText(z);
+    if ((z.laeuft && !z.ende && !z.fehler) || z.gast) timer = setTimeout(abfragen, backend ? 300 : 1000);
   } catch {
     zeigeBanner("Server nicht erreichbar – läuft python -m web noch?", "fehler");
   }
 }
 
 function zeichnen(z) {
-  if (z.seed !== seed) { seed = z.seed; gesehenLaden(); }
-  menschen = z.menschen || [];
+  // Gast: Der Gastgeber hat eine neue Partie gestartet – von vorn abfragen.
+  if (seed !== null && z.seed !== seed && z.gast) { neuAufsetzen(); abfragen(); return; }
+  if (z.seed !== seed) {
+    seed = z.seed;
+    gesehenLaden();
+    $("tisch").querySelector(":scope > .leer")?.remove();  // „Starte eine neue Partie.“ (z. B. nach Neuladen)
+  }
+  gastgeber?.verteilen(z);  // Gästen ihren Teil schicken (vollständig, mit Frage)
+  // Plätze per Link spielen auf anderen Geräten: Hier zählen nur die Menschen an diesem Gerät.
+  for (const platz of fern) if (!(z.menschen || []).includes(platz)) fern.delete(platz);
+  menschen = (z.menschen || []).filter((m) => !fern.has(m));
   // Karten stehen schon beim Austeilen fest, vor dem ersten Zug.
   karten = z.karten || {};
   wissenVon = z.geheimwissen || {};
   jetztKarten = z.jetzt_karten || {};
   kartenTitel = z.karte_titel || kartenTitel;
-  frage = z.frage || null;
+  frage = z.frage && !fern.has(z.frage.wer) ? z.frage : null;
   spielEnde = Boolean(z.ende);
   if (!mehrere()) aktiv = menschen[0] || null;  // allein: immer du
   document.body.classList.add("laeuft");
-  const wer = mehrere() ? `Menschen: ${menschen.join(", ")}` : `Du spielst als ${menschen[0]}`;
-  $("kopfzeile").textContent = `${wer} · Seed ${z.seed}`;
+  const wer = mehrere() ? `Menschen: ${menschen.join(", ")}`
+    : menschen.length ? `Du spielst als ${menschen[0]}${z.gast ? " (per Link)" : ""}` : "Du schaust zu";
+  $("kopfzeile").textContent = `${wer}${fern.size ? ` · per Link: ${[...fern].join(", ")}` : ""} · Seed ${z.seed}`;
   for (const e of z.ereignisse) {
     if (e.art === "tag") tagDa = true;  // Vollmondnacht: Die Nacht ist vorbei
     ereignisAnzeigen(e);
@@ -648,7 +780,8 @@ function zeichnen(z) {
     const du = !mehrere()
       ? (sieger.length ? "Du hast gewonnen! " : verlierer.length ? "Du hast verloren. " : "")
       : (sieger.length ? `Gewonnen: ${sieger.join(", ")}. ` : "") + (verlierer.length ? `Verloren: ${verlierer.join(", ")}. ` : "");
-    const wo = z.protokoll ? ` Alle Geheimnisse stehen im Protokoll ${z.protokoll}.` : " Alle Geheimnisse stehen im Protokoll:";
+    const wo = z.protokoll ? ` Alle Geheimnisse stehen im Protokoll ${z.protokoll}.`
+      : z.downloads?.length ? " Alle Geheimnisse stehen im Protokoll:" : "";
     zeigeBanner(`${du}Ergebnis: ${z.ende}.${wo}`, "ende");
     for (const d of z.downloads || []) {  // Browser-Modus: Dateien zum Herunterladen
       const link = Object.assign(document.createElement("a"), {
@@ -770,7 +903,8 @@ function wahlknoepfe(moeglich, gewaehlt) {
 }
 
 modusErkennen()
-  .then(optionenLaden)
+  .then(() => (GAST ? null : optionenLaden()))
+  .then(() => (GAST ? null : gastgeberFortsetzen()))
   .then(abfragen)  // Läuft schon eine Partie (z. B. nach Neuladen der Seite), weiter anzeigen.
   .catch((fehler) => zeigeBanner(`Start fehlgeschlagen: ${fehler}`, "fehler"));
 </script>

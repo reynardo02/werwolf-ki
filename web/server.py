@@ -28,6 +28,8 @@ STARTSEITE = Path(__file__).parent / "static" / "index.html"
 KARTEN = Path(__file__).parent / "static" / "karten"
 # Nur einfache Dateinamen, damit niemand mit „../“ andere Dateien abrufen kann.
 KARTEN_PFAD = re.compile(r"/karten/([a-z]+\.jpg)")
+# Skripte für „Mitspieler per Link“: unsere Verbindungslogik und PeerJS (WebRTC).
+SKRIPTE = {"/mehrspieler.js", "/peerjs.min.js"}
 
 
 def sitzung_aus_anfrage(daten: dict[str, Any], ordner: Path | None = None) -> Sitzung:
@@ -77,6 +79,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "image/jpeg")
             self.send_header("Content-Length", str(len(inhalt)))
             self.send_header("Cache-Control", "max-age=3600")
+            self.end_headers()
+            self.wfile.write(inhalt)
+        elif url.path in SKRIPTE:
+            inhalt = (STARTSEITE.parent / url.path[1:]).read_bytes()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            self.send_header("Content-Length", str(len(inhalt)))
             self.end_headers()
             self.wfile.write(inhalt)
         elif url.path == "/favicon.ico":
