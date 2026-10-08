@@ -99,6 +99,9 @@ async function weiter() {
       const z = JSON.parse(py.schritt_json(JSON.stringify({
         einstellungen: p.einstellungen, seed: p.seed, antworten_mensch: p.mensch,
         antworten_llm: p.llm, modell: p.einstellungen.llm === "0" ? "" : hilfen.zugang().modell,
+        // OpenAI über /responses: Nur dort nutzen GPT-6-Modelle Tools, während sie nachdenken.
+        // Nach der Adresse, nicht nach dem Anbieter-Feld: Wer das Modell von Hand ändert, steht auf „Eigene“.
+        schnittstelle: /^https:\/\/api\.openai\.com\//.test(hilfen.zugang().basis) ? "responses" : "chat",
       })));
       if (z.fehler) { p.fehler = z.fehler; return; }
       p.zustand = z;
@@ -128,7 +131,9 @@ const warten = (ms) => new Promise((fertig) => setTimeout(fertig, ms));
 async function llmFragen(anfrage, p) {
   const zugang = hilfen.zugang();
   if (!zugang.key) throw new Error("Kein API-Key eingetragen (unten bei „LLM-Zugang“).");
-  const url = zugang.basis.replace(/\/?$/, "/") + "chat/completions";
+  // Python baut die Anfrage im passenden Format: Responses hat „input“, Chat hat „messages“.
+  const responses = "input" in anfrage;
+  const url = zugang.basis.replace(/\/?$/, "/") + (responses ? "responses" : "chat/completions");
 
   for (let versuch = 0; ; versuch++) {
     // Tempolimit: höchstens so viele Anfragen pro Minute (kostenlose Tarife sind knapp).
@@ -144,7 +149,8 @@ async function llmFragen(anfrage, p) {
       // deshalb darf die Anbieter-Vorlage sie überschreiben.
       body: JSON.stringify({
         ...anfrage, model: zugang.modell,
-        ...(zugang.temperatur !== undefined && { temperature: zugang.temperatur }),
+        // Nachdenkende Modelle über /responses lehnen eine Temperatur ab.
+        ...(!responses && zugang.temperatur !== undefined && { temperature: zugang.temperatur }),
       }),
     });
     if (antwort.ok) return antwort.json();

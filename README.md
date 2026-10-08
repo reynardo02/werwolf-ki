@@ -40,6 +40,8 @@ oder bei [OpenAI](https://platform.openai.com/api-keys). Trag ihn auf der Seite 
 
 - **OpenAI** (`gpt-5.4`, voreingestellt): spielt in unseren Tests am besten – Werwölfe bluffen geschickt,
   das Dorf zieht saubere Schlüsse. Kostet ein paar Cent pro Partie.
+- **Günstiger:** Ins Feld „Modell“ z. B. `gpt-6.1-sol` (neuer, billiger als gpt-5.4) oder `gpt-6-luna` (sehr billig,
+  noch nicht erprobt) eintragen. Bei OpenAI nutzt die Seite dafür automatisch die neue Responses-Schnittstelle.
 - **Google Gemini** (`gemini-3.5-flash-lite`): günstig, im kostenlosen Tarif nutzbar, spielt aber deutlich schwächer.
 
 - Der Key bleibt in deinem Browser und wird nur an den LLM-Anbieter geschickt.

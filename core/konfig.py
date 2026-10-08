@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 from core.llm_client import OpenAIKompatiblerClient
+from core.schnittstellen import CHAT, SCHNITTSTELLEN
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,7 @@ class LLMKonfig:
     max_aufrufe: int = 400
     tool_choice: str = "required"
     max_pro_minute: int = 0
+    schnittstelle: str = CHAT
 
     def client(self) -> OpenAIKompatiblerClient:
         return OpenAIKompatiblerClient(
@@ -27,6 +29,7 @@ class LLMKonfig:
             max_aufrufe=self.max_aufrufe,
             tool_choice=self.tool_choice,
             max_pro_minute=self.max_pro_minute,
+            schnittstelle=self.schnittstelle,
         )
 
 
@@ -53,6 +56,10 @@ def konfig_laden(env_datei: str | None = ".env") -> LLMKonfig:
             fehlend.append("LLM_API_KEY")
     if fehlend:
         raise ValueError(f"Fehlende Einstellungen in der .env: {', '.join(fehlend)}")
+    # "responses" für OpenAIs GPT-6-Modelle (Tools beim Nachdenken nur dort), sonst "chat".
+    schnittstelle = os.getenv("LLM_SCHNITTSTELLE", CHAT).strip().lower()
+    if schnittstelle not in SCHNITTSTELLEN:
+        raise ValueError(f"LLM_SCHNITTSTELLE muss {' oder '.join(SCHNITTSTELLEN)} sein, nicht '{schnittstelle}'")
 
     return LLMKonfig(
         base_url=base_url,
@@ -62,4 +69,5 @@ def konfig_laden(env_datei: str | None = ".env") -> LLMKonfig:
         max_aufrufe=int(os.getenv("LLM_MAX_AUFRUFE", "400")),
         tool_choice=os.getenv("LLM_TOOL_CHOICE", "required"),
         max_pro_minute=int(os.getenv("LLM_MAX_PRO_MINUTE", "0")),
+        schnittstelle=schnittstelle,
     )

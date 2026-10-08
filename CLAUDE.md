@@ -112,6 +112,12 @@ Zusatz: Eigene Namen für Menschen. Einstellungen bekommen `namen` (Platz → Na
   (Links, Zeichen). Mit Gästen öffnet „Partie starten“ erst einen Warteraum: Gäste tragen dort ihren Namen ein (`typ: "name"`,
   im Gast-Browser gemerkt), der Gastgeber sieht „Clara → David“ und startet mit „Jetzt starten“. Danach filtert der Gastgeber
   nach dem Spielnamen (`spielnamenSetzen`).
+Zusatz: Responses-Schnittstelle für OpenAI. GPT-6-Modelle (gpt-6-sol, gpt-6.1-sol …) lehnen Tools bei /chat/completions ab,
+  solange sie nachdenken (400 „Function tools with reasoning_effort are not supported“). core/schnittstellen.py übersetzt
+  Anfrage und Antwort für „chat“ und „responses“ (Tools flach mit strict=False, keine Temperatur, store=False); Antworten
+  erkennen ihr Format selbst, gespeicherte Browser-Partien laufen weiter. Website: Adresse api.openai.com → /responses,
+  alle anderen Anbieter → /chat/completions. Konsole: `LLM_SCHNITTSTELLE=responses` in der .env (Standard chat, damit die
+  Serien vergleichbar bleiben).
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
