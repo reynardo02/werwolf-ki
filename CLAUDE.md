@@ -264,6 +264,7 @@ Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwö
 - Fix nach eigener Partie: Eine Doppelgängerin, die den Gerber nachahmte, sagte offen „ich bin jetzt Gerber“. Ihr Hinweis
   nannte nur Werwolf/Günstling als Lügner, die Kopie kannte das LLM nicht. Jetzt setzt die Engine nach dem Nachahmen
   `bekannte_karte` auf die Kopie (wie bei Räuber/Schlafloser), und rollen_hinweis gibt ihr Hinweis und Partei der Kopie (KOPIE).
-  Damit greifen NEUE_PARTEI/NICHT_VERRATEN auch für sie. Räuber/Schlaflose sehen die Doppelgängerin-Karte jetzt als deren Kopie.
+  Damit greifen NEUE_PARTEI/NICHT_VERRATEN auch für sie. Räuber/Schlaflose sehen weiter nur die Karte „Doppelgängerin“,
+  nicht die Kopie; nur die Doppel-Schlaflose weiß bei ihrer eigenen Karte, was sie nachahmt.
   Betrifft Konfusion nicht (keine Doppelgängerin) – die Serien bleiben vergleichbar.
 Als Nächstes: offen – z. B. gemini-3.5-flash als zweites stärkeres Modell oder Agenten-Kern für die Simulation herauslösen.
