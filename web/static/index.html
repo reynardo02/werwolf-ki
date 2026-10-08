@@ -283,7 +283,7 @@
         </div>
         <div>
           <label for="tempo">Anfragen pro Minute</label>
-          <input id="tempo" type="number" min="0" value="100">
+          <input id="tempo" type="number" min="0" value="1000">
         </div>
       </div>
       <label for="key">API-Key</label>
@@ -371,8 +371,8 @@ function zugangLesen() {
 function zugangLaden() {
   try {
     const z = JSON.parse(localStorage.getItem("werwolf-zugang") || "{}");
-    // „15“ war der alte Standard fürs Tempolimit – gemerkt heißt das nicht „gewollt“.
-    if (z.tempo === "15") delete z.tempo;
+    // „15“ und „100“ waren alte Standards fürs Tempolimit – gemerkt heißt das nicht „gewollt“.
+    if (z.tempo === "15" || z.tempo === "100") delete z.tempo;
     // Gleiches beim alten OpenAI-Standard gpt-5.4: dann den neuen Standard nehmen.
     if (z.anbieter === "openai" && z.modell === "gpt-5.4") delete z.modell;
     // Ältere Speicherstände kennen keinen Anbieter: aus der Adresse ableiten.
