@@ -125,6 +125,13 @@ def test_server_liefert_kartenbilder(server: str) -> None:
     assert anfrage(server + "/karten/..%2Fserver.py")[0] == 404
 
 
+def test_server_liefert_skripte_fuer_mitspieler_per_link(server: str) -> None:
+    for pfad in ("/mehrspieler.js", "/peerjs.min.js"):
+        with urllib.request.urlopen(server + pfad, timeout=5) as antwort:
+            assert antwort.status == 200 and "javascript" in antwort.headers["Content-Type"]
+    assert anfrage(server + "/server.py")[0] == 404  # nur diese beiden, keine beliebigen Dateien
+
+
 @pytest.mark.parametrize("falsch", [
     {"regeln": "schach"},
     {"regeln": "klassisch", "spieler": 9},

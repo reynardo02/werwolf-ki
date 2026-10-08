@@ -22,6 +22,14 @@ Gerät“ die Plätze ankreuzen, die übrigen übernehmen LLMs oder Zufallsspiel
 erscheint „Gib das Gerät an …“ – erst nach „Ich bin …“ sieht die Person ihre Karte, ihr Wissen
 und ihren Zug. Danach wird alles wieder verdeckt.
 
+## Mit Freunden per Link
+
+Unter „Davon per Link“ Plätze ankreuzen und Partie starten: Rechts erscheint für jeden Platz ein Link
+(„Kopieren“ oder „Teilen“). Wer ihn öffnet, spielt auf dem eigenen Handy oder Laptop mit – ohne eigenen
+API-Key, die Partie läuft in deinem Browser. Deine Seite muss dafür offen bleiben (am besten am Laptop;
+ein gesperrtes Handy pausiert die Seite). Die Browser verbinden sich direkt (WebRTC über
+[PeerJS](https://peerjs.com)); jeder bekommt nur seine eigenen Geheimnisse.
+
 ## Mit KI-Mitspielern spielen
 
 Für LLM-Mitspieler brauchst du einen eigenen API-Key eines OpenAI-kompatiblen Anbieters,

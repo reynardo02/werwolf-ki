@@ -132,6 +132,9 @@ def test_seite_bauen(tmp_path) -> None:
     # Gegen den Browser-Cache: Seite, Backend und Code tragen dieselbe Versionsnummer.
     version = re.search(r'pyodide-backend\.js\?v=(\w+)"', seite)[1]
     assert f'werwolf-ki.zip?v={version}"' in (ziel / "pyodide-backend.js").read_text(encoding="utf-8")
+    # Mitspieler per Link: eigenes Skript (mit Version) und PeerJS samt Lizenz liegen auf der Seite.
+    assert f'"./mehrspieler.js?v={version}"' in seite
+    assert all((ziel / d).exists() for d in ("mehrspieler.js", "peerjs.min.js", "peerjs-LICENSE.txt"))
 
 
 @pytest.mark.parametrize("regeln, titel", [("vollmondnacht", "Deine Karte zu Beginn"), ("klassisch", "Deine Rolle")])

@@ -4,6 +4,7 @@
 
 Inhalt des Ordners:
   index.html, pyodide-backend.js   die Spielseite und ihr Server-Ersatz
+  mehrspieler.js, peerjs.min.js     Mitspieler per Link (WebRTC über PeerJS)
   karten/                          die Kartenbilder
   werwolf-ki.zip                   unser Python-Code (core/, werwolf/, web/) für Pyodide
   pyodide/                         Python für den Browser (aus dem npm-Paket „pyodide“)
@@ -53,6 +54,8 @@ def bauen(ziel: Path, pyodide: Path) -> None:
         shutil.rmtree(ziel)
     (ziel / "pyodide").mkdir(parents=True)
     shutil.copytree(STATIC / "karten", ziel / "karten")
+    for datei in ("peerjs.min.js", "peerjs-LICENSE.txt"):
+        shutil.copy(STATIC / datei, ziel / datei)
     for datei in PYODIDE_DATEIEN:
         shutil.copy(pyodide / datei, ziel / "pyodide" / datei)
     namen = code_packen(ziel / "werwolf-ki.zip")
@@ -60,11 +63,16 @@ def bauen(ziel: Path, pyodide: Path) -> None:
     # Versionsnummer gegen den Browser-Cache: Sonst lädt ein Browser nach einem Update evtl. neues
     # index.html, aber altes pyodide-backend.js oder alten Python-Code – das passt nicht zusammen.
     backend = (STATIC / "pyodide-backend.js").read_text(encoding="utf-8")
-    version = hashlib.sha256(backend.encode() + (ziel / "werwolf-ki.zip").read_bytes()).hexdigest()[:12]
+    mehrspieler = (STATIC / "mehrspieler.js").read_text(encoding="utf-8")
+    version = hashlib.sha256(
+        backend.encode() + mehrspieler.encode() + (ziel / "werwolf-ki.zip").read_bytes()
+    ).hexdigest()[:12]
+    (ziel / "mehrspieler.js").write_text(mehrspieler, encoding="utf-8")
     (ziel / "pyodide-backend.js").write_text(
         _ersetzen(backend, '"./werwolf-ki.zip"', f'"./werwolf-ki.zip?v={version}"'), encoding="utf-8")
     seite = (STATIC / "index.html").read_text(encoding="utf-8")
     seite = _ersetzen(seite, '"./pyodide-backend.js"', f'"./pyodide-backend.js?v={version}"')
+    seite = _ersetzen(seite, '"./mehrspieler.js"', f'"./mehrspieler.js?v={version}"')
     # Markierung: Diese Fassung hat keinen Python-Server, also gleich Python im Browser laden.
     seite = _ersetzen(seite, '<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="werwolf-modus" content="browser">')
     (ziel / "index.html").write_text(seite, encoding="utf-8")
