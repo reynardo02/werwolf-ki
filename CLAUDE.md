@@ -103,6 +103,9 @@ Zusatz: Mitspieler per Link (Weg A, ohne eigenen Server): Ein Browser ist Gastge
   bleiben in localStorage („werwolf-gastgeber“), Links gelten auch für die nächste Partie. Test ohne Internet: `?verbindung=lokal`
   (BroadcastChannel, zwei Tabs) – so per Playwright geprüft; PeerJS übers echte Netz war hier nicht testbar (Proxy).
   tests/test_mehrspieler.py prüft die Filter mit Node.
+  Fix nach der ersten echten Partie: Der Gast sah das Ende nicht – der Endstand (mit Protokoll und Log) war zu groß für
+  den WebRTC-Kanal (je nach Browser 16–64 KB pro Nachricht) und ging still verloren. Jetzt zerlegt `stueckweise()` jede
+  Nachricht in Stücke ≤ 8000 Zeichen (`zerlegen`/`zusammensetzer`), auch im Testkanal.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).
