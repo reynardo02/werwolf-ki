@@ -157,7 +157,7 @@ def schritt(
     """Spielt die Partie von vorn bis zur ersten fehlenden Antwort (oder bis zum Ende)."""
     e = einstellungen_pruefen(einstellungen)
     rng = random.Random(seed)
-    namen = NAMEN[:e.spieler]
+    namen = list(e.namen)
     szenario = e.szenario
     if e.regeln == VOLLMONDNACHT and szenario is None:
         szenario = szenario_namen(e.spieler)[0]

@@ -114,6 +114,7 @@ class Sitzung:
     llm: str  # Zahl oder "alle"
     menschen: tuple[str, ...]
     szenario: str | None = None
+    namen: tuple[str, ...] = ()  # alle Spieler in Sitzreihenfolge (leer: Platz-Namen)
     ordner: Path | None = None  # Standard: logs/ wie bei main.py
     seed: int = field(default_factory=lambda: random.randrange(1_000_000))
     ereignisse: list[dict[str, str]] = field(default_factory=list)
@@ -165,7 +166,7 @@ class Sitzung:
             kurz = partie_spielen(
                 self.seed, self.spieler, anzahl_llm, client, self.dateiname, ausfuehrlich=False,
                 regeln=self.regeln, szenario=self.szenario, menschen=self.menschen, mensch_spieler=self.mensch,
-                beobachter_extra=self._beobachten, konsole=False, engine_gebaut=self._engine_gebaut,
+                beobachter_extra=self._beobachten, konsole=False, engine_gebaut=self._engine_gebaut, namen=self.namen or None,
                 **({"ordner": self.ordner} if self.ordner else {}),
             )
             with self._lock:
