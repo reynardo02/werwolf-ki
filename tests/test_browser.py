@@ -214,3 +214,41 @@ def test_partie_mit_eigenen_namen() -> None:
     assert z["menschen"] == ["Paul", "David"] and set(z["karten"]) == {"Paul", "David"}
     kopf = json.loads(z["log"].splitlines()[0])
     assert [s["name"] for s in kopf["spieler"]] == ["Anna", "Paul", "David", "Dario", "Emil"]
+
+
+def llm_antwort_responses(anfrage: dict) -> dict:
+    """Simuliert /responses: Nachdenken, dann das erste Tool mit den ersten erlaubten Werten."""
+    werkzeug = anfrage["tools"][0]
+    argumente = {}
+    for name, schema in werkzeug["parameters"]["properties"].items():
+        argumente[name] = next(w for w in schema["enum"] if w not in argumente.values()) if "enum" in schema else "Hm."
+    return {"output": [{"type": "reasoning", "summary": []},
+                       {"type": "function_call", "name": werkzeug["name"], "arguments": json.dumps(argumente)}],
+            "usage": {"input_tokens": 10, "output_tokens": 5}}
+
+
+def test_partie_ueber_responses_auch_nach_wechsel() -> None:
+    einstellungen = {"regeln": "vollmondnacht", "spieler": 5, "llm": "alle", "menschen": ["Emil"]}
+    mensch, llm, formate = [], [], []
+    for _ in range(500):
+        # Die ersten drei LLM-Züge noch im alten Chat-Format (gespeicherte Partie), dann Responses.
+        schnittstelle = "chat" if len(llm) < 3 else "responses"
+        z = json.loads(schritt_json(json.dumps({"einstellungen": einstellungen, "seed": 9, "antworten_mensch": mensch,
+                                                "antworten_llm": llm, "modell": "gpt-6.1-sol", "schnittstelle": schnittstelle})))
+        if z["ende"]:
+            break
+        if z["llm_anfrage"]:
+            anfrage = z["llm_anfrage"]
+            if "input" in anfrage:
+                formate.append("responses")
+                assert anfrage["instructions"] and "temperature" not in anfrage and anfrage["tools"][0]["strict"] is False
+                llm.append(llm_antwort_responses(anfrage))
+            else:
+                formate.append("chat")
+                llm.append(llm_antwort(anfrage))
+        else:
+            mensch.append(mensch_antwort(z["frage"]))
+    assert z["ende"] and not z.get("fehler")
+    assert formate[:3] == ["chat"] * 3 and set(formate[3:]) == {"responses"}
+    kopf = json.loads(z["log"].splitlines()[0])
+    assert kopf["modell"] == "gpt-6.1-sol"

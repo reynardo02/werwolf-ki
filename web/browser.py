@@ -33,7 +33,8 @@ except ImportError:
     sys.modules["openai"] = _platzhalter
 
 from core.llm_client import Antwort  # noqa: E402 – erst nach dem Platzhalter importieren
-from core.tools import ToolCall, ToolSchema  # noqa: E402
+from core.schnittstellen import CHAT, anfrage_bauen, antwort_lesen  # noqa: E402
+from core.tools import ToolSchema  # noqa: E402
 from web.einstellungen import Fehler, einstellungen_pruefen, optionen  # noqa: E402
 from web.sitzung import frage_aus_zug, geheimes, karte_titel  # noqa: E402
 from werwolf.aufbau import (  # noqa: E402
@@ -90,10 +91,13 @@ class WiederholSpieler:
 class WiederholClient:
     """LLM-Client mit gespeicherten Antworten. Fehlt eine, wird die Anfrage gemeldet."""
 
-    def __init__(self, modell: str, antworten: list[dict[str, Any]], temperatur: float = 0.9) -> None:
+    def __init__(
+        self, modell: str, antworten: list[dict[str, Any]], temperatur: float = 0.9, schnittstelle: str = CHAT,
+    ) -> None:
         self.modell = modell
         self.antworten = antworten
         self.temperatur = temperatur
+        self.schnittstelle = schnittstelle  # "responses" für OpenAI (GPT-6), sonst "chat"
         self.i = 0
 
     def anfragen(self, system: str, nachricht: str, tools: list[ToolSchema]) -> Antwort:
@@ -103,32 +107,13 @@ class WiederholClient:
             return antwort
         # Gleiches Format wie OpenAIKompatiblerClient – nur ohne Modell und Key,
         # die setzt JavaScript ein.
-        raise BrauchtLLM({
-            "temperature": self.temperatur,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": nachricht}],
-            "tools": [t.als_openai() for t in tools],
-            "tool_choice": "required",
-        })
+        raise BrauchtLLM(anfrage_bauen(self.schnittstelle, system, nachricht, tools, "required", self.temperatur))
 
 
 def antwort_aus_json(daten: dict[str, Any]) -> Antwort:
-    """Liest eine rohe /chat/completions-Antwort. Kaputtes zählt als „kein Tool-Call“."""
-    try:
-        nachricht = daten["choices"][0]["message"]
-    except (KeyError, IndexError, TypeError):
-        return Antwort(None)
-    text = nachricht.get("content") or ""
-    tool_calls = nachricht.get("tool_calls") or []
-    if not tool_calls:
-        return Antwort(None, text)
-    funktion = tool_calls[0].get("function") or {}
-    try:
-        argumente = json.loads(funktion.get("arguments") or "{}")
-    except json.JSONDecodeError:
-        return Antwort(None, text)
-    if not isinstance(argumente, dict):
-        return Antwort(None, text)
-    return Antwort(ToolCall(str(funktion.get("name")), argumente), text)
+    """Liest eine rohe Antwort (/chat/completions oder /responses). Kaputtes zählt als „kein Tool-Call“."""
+    tool_call, text, _ = antwort_lesen(daten)
+    return Antwort(tool_call, text)
 
 
 def _gewonnen(ergebnis: Any, engine: Any, menschen: tuple[str, ...]) -> dict[str, bool]:
@@ -152,9 +137,13 @@ def _log_text(kopf: dict[str, Any], ereignisse: list[Ereignis], daten: dict[str,
 
 def schritt(
     einstellungen: dict[str, Any], seed: int, antworten_mensch: list[dict[str, Any]],
-    antworten_llm: list[dict[str, Any]], modell: str = "",
+    antworten_llm: list[dict[str, Any]], modell: str = "", schnittstelle: str = CHAT,
 ) -> dict[str, Any]:
-    """Spielt die Partie von vorn bis zur ersten fehlenden Antwort (oder bis zum Ende)."""
+    """Spielt die Partie von vorn bis zur ersten fehlenden Antwort (oder bis zum Ende).
+
+    `schnittstelle`: In welchem Format die LLM-Anfrage gebaut wird („chat“ oder „responses“).
+    Gespeicherte Antworten werden in beiden Formaten gelesen.
+    """
     e = einstellungen_pruefen(einstellungen)
     rng = random.Random(seed)
     namen = list(e.namen)
@@ -163,7 +152,7 @@ def schritt(
         szenario = szenario_namen(e.spieler)[0]
 
     mensch = WiederholSpieler(antworten_mensch)
-    client = WiederholClient(modell, antworten_llm) if e.anzahl_llm else None
+    client = WiederholClient(modell, antworten_llm, schnittstelle=schnittstelle) if e.anzahl_llm else None
     besetzung = agenten_bauen(seed, rng, namen, e.anzahl_llm, client, e.regeln, e.menschen, mensch)
     alle: list[Ereignis] = []
     engine, rolle_von = engine_bauen(e.regeln, besetzung.agenten, rng, szenario or "", alle.append, e.menschen)
@@ -211,6 +200,7 @@ def schritt_json(eingabe: str) -> str:
         zustand = schritt(
             daten["einstellungen"], int(daten["seed"]), daten.get("antworten_mensch", []),
             daten.get("antworten_llm", []), daten.get("modell", ""),
+            CHAT if daten.get("schnittstelle") != "responses" else "responses",
         )
     except Fehler as fehler:
         return json.dumps({"fehler": str(fehler)}, ensure_ascii=False)

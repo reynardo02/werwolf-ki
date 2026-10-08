@@ -253,3 +253,61 @@ def test_kontingent_ist_kein_llmfehler() -> None:
 ])
 def test_wartezeit_aus_fehler(text: str, sekunden: float | None) -> None:
     assert wartezeit_aus_fehler(text) == sekunden
+
+
+def responses_json(ausgabe: list[dict]) -> dict:
+    """Eine Antwort im Format der Responses-Schnittstelle (/v1/responses)."""
+    return {
+        "id": "resp_1", "object": "response", "created_at": 0, "model": "gpt-6-sol", "status": "completed",
+        "output": ausgabe, "parallel_tool_calls": True, "tool_choice": "required", "tools": [],
+        "usage": {"input_tokens": 300, "output_tokens": 50, "total_tokens": 350,
+                  "input_tokens_details": {"cached_tokens": 200}, "output_tokens_details": {"reasoning_tokens": 30}},
+    }
+
+
+def test_responses_schnittstelle() -> None:
+    # GPT-6 nutzt Tools beim Nachdenken nur über /responses (bei /chat/completions: Fehler 400).
+    pfade: list[str] = []
+
+    def antworten(request: httpx.Request) -> httpx.Response:
+        pfade.append(request.url.path)
+        return httpx.Response(200, json=responses_json([
+            {"type": "reasoning", "id": "rs_1", "summary": []},  # Nachdenken: wird übersprungen
+            {"type": "function_call", "id": "fc_1", "call_id": "c1", "name": "abstimmen",
+             "arguments": '{"ziel": "Ben"}', "status": "completed"},
+        ]))
+
+    client, gesendet = client_mit(antworten, schnittstelle="responses")
+    antwort = client.anfragen("System", "Nachricht", [TOOL])
+
+    assert pfade == ["/v1/responses"]
+    anfrage = gesendet[0]
+    assert anfrage["instructions"] == "System" and anfrage["input"] == [{"role": "user", "content": "Nachricht"}]
+    # Tools flach statt unter "function", nicht strikt (die Begründung ist freiwillig).
+    assert anfrage["tools"][0]["name"] == "abstimmen" and anfrage["tools"][0]["strict"] is False
+    assert "temperature" not in anfrage and anfrage["store"] is False
+    assert antwort.tool_call is not None and antwort.tool_call.argumente == {"ziel": "Ben"}
+    assert (client.statistik.input_tokens, client.statistik.output_tokens, client.statistik.gecachte_tokens) == (300, 50, 200)
+
+
+def test_responses_ohne_tool_call_zaehlt() -> None:
+    client, _ = client_mit(lambda r: httpx.Response(200, json=responses_json([
+        {"type": "message", "id": "m1", "role": "assistant", "status": "completed",
+         "content": [{"type": "output_text", "text": "Ich überlege noch.", "annotations": []}]},
+    ])), schnittstelle="responses")
+    antwort = client.anfragen("S", "N", [TOOL])
+    assert antwort.tool_call is None and antwort.text == "Ich überlege noch."
+    assert client.statistik.ohne_tool_call == 1
+
+
+def test_konfig_liest_schnittstelle(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setenv("LLM_MODEL", "gpt-6.1-sol")
+    monkeypatch.setenv("LLM_API_KEY", "x")
+    monkeypatch.delenv("LLM_SCHNITTSTELLE", raising=False)
+    assert konfig_laden(env_datei=None).schnittstelle == "chat"  # Standard: wie bisher
+    monkeypatch.setenv("LLM_SCHNITTSTELLE", "Responses")
+    assert konfig_laden(env_datei=None).client().schnittstelle == "responses"
+    monkeypatch.setenv("LLM_SCHNITTSTELLE", "irgendwas")
+    with pytest.raises(ValueError):
+        konfig_laden(env_datei=None)

@@ -5,7 +5,6 @@ Ollama, ...). Den Anbieter wechselst du deshalb nur über `base_url` und `modell
 Nur diese Datei kennt das SDK – der Rest des Projekts sieht nur `LLMClient`.
 """
 
-import json
 import re
 import time
 from collections.abc import Callable
@@ -14,6 +13,7 @@ from typing import Any, Protocol
 
 import openai
 
+from core.schnittstellen import CHAT, RESPONSES, anfrage_bauen, antwort_lesen
 from core.tools import ToolCall, ToolSchema
 
 
@@ -85,6 +85,9 @@ class OpenAIKompatiblerClient:
     max_pro_minute: int = 0
     # Wie oft nach "429 Too Many Requests" gewartet und neu versucht wird.
     versuche_bei_limit: int = 3
+    # "chat" (/chat/completions, versteht fast jeder Anbieter) oder "responses" (/responses,
+    # OpenAI): GPT-6-Modelle nutzen Tools beim Nachdenken nur über /responses.
+    schnittstelle: str = CHAT
     sdk: Any = None  # Nur für Tests: ein vorbereiteter openai.OpenAI-Client
     statistik: Statistik = field(default_factory=Statistik)
     # Uhr und Warten sind austauschbar, damit Tests nicht wirklich warten müssen.
@@ -103,20 +106,14 @@ class OpenAIKompatiblerClient:
             raise BudgetErschoepft(f"Limit von {self.max_aufrufe} API-Aufrufen erreicht.")
         self.statistik.aufrufe += 1
 
-        anfrage = {
-            "model": self.modell,
-            "temperature": self.temperatur,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": nachricht},
-            ],
-            "tools": [t.als_openai() for t in tools],
-            "tool_choice": self.tool_choice,
-        }
+        anfrage = {"model": self.modell} | anfrage_bauen(
+            self.schnittstelle, system, nachricht, tools, self.tool_choice, self.temperatur
+        )
+        senden = self.sdk.responses.create if self.schnittstelle == RESPONSES else self.sdk.chat.completions.create
         for versuch in range(self.versuche_bei_limit + 1):
             self._tempo_einhalten()
             try:
-                antwort = self.sdk.chat.completions.create(**anfrage)
+                antwort = senden(**anfrage)
                 break
             except openai.RateLimitError as fehler:
                 # Lange Sperre (z. B. Tageslimit): Warten bringt nichts, abbrechen.
@@ -131,21 +128,14 @@ class OpenAIKompatiblerClient:
             except openai.OpenAIError as fehler:
                 raise self._fehler_melden(fehler) from fehler
 
-        if antwort.usage:
-            self.statistik.input_tokens += antwort.usage.prompt_tokens or 0
-            self.statistik.output_tokens += antwort.usage.completion_tokens or 0
-            # Nicht jeder Anbieter meldet den Cache – dann bleibt es bei 0.
-            details = getattr(antwort.usage, "prompt_tokens_details", None)
-            self.statistik.gecachte_tokens += getattr(details, "cached_tokens", None) or 0
-
-        if not antwort.choices:
-            self.statistik.ohne_tool_call += 1
-            return Antwort(None)
-        nachricht_llm = antwort.choices[0].message
-        tool_call = _ersten_tool_call_lesen(nachricht_llm.tool_calls)
+        # Beide Formate über dieselbe Übersetzung lesen (core/schnittstellen.py).
+        tool_call, text, nutzung = antwort_lesen(antwort.model_dump())
+        self.statistik.input_tokens += nutzung.input_tokens
+        self.statistik.output_tokens += nutzung.output_tokens
+        self.statistik.gecachte_tokens += nutzung.gecachte_tokens  # nicht jeder Anbieter meldet den Cache
         if tool_call is None:
             self.statistik.ohne_tool_call += 1
-        return Antwort(tool_call, nachricht_llm.content or "")
+        return Antwort(tool_call, text)
 
     def _tempo_einhalten(self) -> None:
         """Wartet, bis seit der letzten Anfrage genug Zeit vergangen ist."""
@@ -164,17 +154,3 @@ class OpenAIKompatiblerClient:
         self.statistik.fehler += 1
         self.statistik.letzter_fehler = str(fehler)
         return LLMFehler(str(fehler))
-
-
-def _ersten_tool_call_lesen(tool_calls: list[Any] | None) -> ToolCall | None:
-    """Nimmt den ersten Tool-Call. Kaputtes JSON zählt als 'kein Tool-Call'."""
-    if not tool_calls:
-        return None
-    funktion = tool_calls[0].function
-    try:
-        argumente = json.loads(funktion.arguments or "{}")
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(argumente, dict):
-        return None
-    return ToolCall(funktion.name, argumente)
