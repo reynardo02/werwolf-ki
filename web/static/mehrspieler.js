@@ -44,6 +44,48 @@ function peerLaden() {
   return peerGeladen;
 }
 
+// Große Nachrichten in Stücke teilen: WebRTC-Datenkanäle vertragen je nach Browser nur 16–64 KB pro
+// Nachricht (Safari eher wenig), und PeerJS teilt im JSON-Modus nicht selbst. Der Endstand mit
+// Protokoll und Log ist mit echten LLM-Reden größer – er kam beim Gast nie an (eigene Partie).
+// 8000 Zeichen sind auch mit Umlauten und Emojis sicher unter 32 KB.
+const TEIL = 8000;
+
+export function zerlegen(daten, nummer) {
+  const text = JSON.stringify(daten);
+  const anzahl = Math.max(1, Math.ceil(text.length / TEIL));
+  return Array.from({ length: anzahl }, (_, i) => ({ stueck: nummer, i, von: anzahl, text: text.slice(i * TEIL, (i + 1) * TEIL) }));
+}
+
+// Gibt eine Funktion zurück, die Stücke annimmt und die ganze Nachricht liefert, sobald sie komplett ist.
+export function zusammensetzer() {
+  const offen = new Map();  // Nummer -> bisher angekommene Teile
+  return (teil) => {
+    if (!teil || typeof teil.text !== "string" || !(teil.von >= 1) || teil.von > 1000) return undefined;
+    if (teil.von === 1) return JSON.parse(teil.text);
+    const teile = offen.get(teil.stueck) || [];
+    teile[teil.i] = teil.text;
+    if (teile.filter((t) => t !== undefined).length < teil.von) { offen.set(teil.stueck, teile); return undefined; }
+    offen.delete(teil.stueck);
+    return JSON.parse(teile.join(""));
+  };
+}
+
+// Legt das Zerlegen über einen Kanal: Wer ihn benutzt, merkt davon nichts.
+function stueckweise(kanal) {
+  let nummer = 0;
+  const zusammen = zusammensetzer();
+  return {
+    senden: (daten) => { for (const teil of zerlegen(daten, nummer++)) kanal.senden(teil); },
+    beiNachricht: (fn) => kanal.beiNachricht((teil) => {
+      let daten;
+      try { daten = zusammen(teil); } catch { return; }  // kaputtes Stück: ignorieren
+      if (daten !== undefined) fn(daten);
+    }),
+    beiEnde: (fn) => kanal.beiEnde(fn),
+    schliessen: () => kanal.schliessen(),
+  };
+}
+
 function kanalAusPeer(verbindung, peer = null) {
   const hoerer = { nachricht: () => {}, ende: () => {} };
   verbindung.on("data", (daten) => hoerer.nachricht(daten));
@@ -57,7 +99,8 @@ function kanalAusPeer(verbindung, peer = null) {
   };
 }
 
-async function raumOeffnen(raum, beiKanal, beiStatus) {
+async function raumOeffnen(raum, beiKanalRoh, beiStatus) {
+  const beiKanal = (kanal) => beiKanalRoh(stueckweise(kanal));
   if (lokal()) {
     const funk = new BroadcastChannel(raum);
     const kanaele = new Map();
@@ -100,6 +143,10 @@ async function raumOeffnen(raum, beiKanal, beiStatus) {
 }
 
 async function raumBetreten(raum, beiStatus) {
+  return stueckweise(await raumBetretenRoh(raum, beiStatus));
+}
+
+async function raumBetretenRoh(raum, beiStatus) {
   if (lokal()) {
     const funk = new BroadcastChannel(raum);
     const ich = zufall(8);
