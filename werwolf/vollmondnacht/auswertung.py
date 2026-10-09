@@ -84,6 +84,8 @@ class VollmondAuswertung:
     api_aufrufe: int = 0
     input_tokens: int = 0
     gecachte_tokens: int = 0
+    output_tokens: int = 0
+    denk_tokens: int = 0
     gruppen: dict[str, "VollmondAuswertung"] = field(default_factory=dict)
 
     @property
@@ -98,6 +100,8 @@ def _zaehlen(a: VollmondAuswertung, p: VollmondPartie) -> None:
         a.api_aufrufe += p.api.get("aufrufe", 0)
         a.input_tokens += p.api.get("input_tokens", 0)
         a.gecachte_tokens += p.api.get("gecachte_tokens", 0)  # ältere Logs: 0
+        a.output_tokens += p.api.get("output_tokens", 0)
+        a.denk_tokens += p.api.get("denk_tokens", 0)  # ältere Logs: 0
     if p.gewinner is None:
         a.abgebrochen += 1
         return
@@ -157,8 +161,15 @@ def bericht(a: VollmondAuswertung, titel: str) -> str:
     ]
     if a.api_aufrufe:
         z.append(_zeile("API-Aufrufe pro Partie", f"{a.api_aufrufe / a.partien:.0f}"))
+    if a.input_tokens:
+        # Woher die Kosten kommen: Eingabe (davon Cache, ~1/10 Preis) und Ausgabe (davon Nachdenken).
+        z.append(_zeile("Input-Tokens pro Partie", f"{a.input_tokens / a.partien:,.0f}".replace(",", ".")))
     if a.gecachte_tokens:
         z.append(_zeile("Input-Tokens aus dem Cache", f"{a.gecachte_tokens / a.input_tokens:.0%}"))
+    if a.output_tokens:
+        z.append(_zeile("Output-Tokens pro Partie", f"{a.output_tokens / a.partien:,.0f}".replace(",", ".")))
+    if a.denk_tokens:
+        z.append(_zeile("Output-Tokens zum Nachdenken", f"{a.denk_tokens / a.output_tokens:.0%}"))
     return "\n".join(z)
 
 

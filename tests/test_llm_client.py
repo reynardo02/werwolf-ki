@@ -288,6 +288,8 @@ def test_responses_schnittstelle() -> None:
     assert "temperature" not in anfrage and anfrage["store"] is False
     assert antwort.tool_call is not None and antwort.tool_call.argumente == {"ziel": "Ben"}
     assert (client.statistik.input_tokens, client.statistik.output_tokens, client.statistik.gecachte_tokens) == (300, 50, 200)
+    assert client.statistik.denk_tokens == 30
+    assert "reasoning" not in anfrage  # ohne Denkstufe: Standard des Modells
 
 
 def test_responses_ohne_tool_call_zaehlt() -> None:
@@ -305,9 +307,42 @@ def test_konfig_liest_schnittstelle(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_MODEL", "gpt-6.1-sol")
     monkeypatch.setenv("LLM_API_KEY", "x")
     monkeypatch.delenv("LLM_SCHNITTSTELLE", raising=False)
+    monkeypatch.delenv("LLM_DENKEN", raising=False)
     assert konfig_laden(env_datei=None).schnittstelle == "chat"  # Standard: wie bisher
     monkeypatch.setenv("LLM_SCHNITTSTELLE", "Responses")
     assert konfig_laden(env_datei=None).client().schnittstelle == "responses"
     monkeypatch.setenv("LLM_SCHNITTSTELLE", "irgendwas")
+    with pytest.raises(ValueError):
+        konfig_laden(env_datei=None)
+
+
+def test_denkstufe_wird_geschickt() -> None:
+    # Denk-Tokens kosten wie Ausgabe: „low“ spart. Responses: reasoning.effort, Chat: reasoning_effort.
+    client, gesendet = client_mit(lambda r: httpx.Response(200, json=responses_json([])),
+                                  schnittstelle="responses", denken="low")
+    client.anfragen("S", "N", [TOOL])
+    assert gesendet[0]["reasoning"] == {"effort": "low"}
+
+    daten = antwort_json([tool_call("abstimmen", '{"ziel": "Ben"}')])
+    daten["usage"]["completion_tokens_details"] = {"reasoning_tokens": 12}
+    client, gesendet = client_mit(lambda r: httpx.Response(200, json=daten), denken="medium")
+    client.anfragen("S", "N", [TOOL])
+    assert gesendet[0]["reasoning_effort"] == "medium" and client.statistik.denk_tokens == 12
+
+
+def test_konfig_liest_denkstufe(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setenv("LLM_MODEL", "gpt-6.1-sol")
+    monkeypatch.setenv("LLM_API_KEY", "x")
+    monkeypatch.delenv("LLM_DENKEN", raising=False)
+    monkeypatch.delenv("LLM_SCHNITTSTELLE", raising=False)
+    assert konfig_laden(env_datei=None).denken == ""  # chat: nichts schicken, Serien bleiben vergleichbar
+    monkeypatch.setenv("LLM_SCHNITTSTELLE", "responses")
+    assert konfig_laden(env_datei=None).client().denken == "low"  # responses: standardmäßig wenig
+    monkeypatch.setenv("LLM_DENKEN", "High")
+    assert konfig_laden(env_datei=None).denken == "high"
+    monkeypatch.setenv("LLM_DENKEN", "standard")
+    assert konfig_laden(env_datei=None).denken == ""
+    monkeypatch.setenv("LLM_DENKEN", "sehr viel")
     with pytest.raises(ValueError):
         konfig_laden(env_datei=None)

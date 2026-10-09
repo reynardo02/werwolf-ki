@@ -135,6 +135,7 @@ def partie_spielen(
         protokoll.schreiben(
             f"API: {st.aufrufe} Aufrufe, {st.input_tokens} Input- / {st.output_tokens} Output-Tokens"
             + (f", davon {st.gecachte_tokens} Input-Tokens aus dem Cache" if st.gecachte_tokens else "")
+            + (f", {st.denk_tokens} Output-Tokens zum Nachdenken" if st.denk_tokens else "")
         )
         if st.fehler or st.ohne_tool_call:
             protokoll.schreiben(

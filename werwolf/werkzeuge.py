@@ -23,7 +23,7 @@ def tool_schemas(tool_namen: list[str], ziele: list[str]) -> list[ToolSchema]:
         SPRECHEN: ToolSchema(
             SPRECHEN,
             "Sag etwas in der Diskussion. Alle lebenden Spieler hören es.",
-            {"text": {"type": "string", "description": "Was du sagst, 1–3 Sätze."}},
+            {"text": {"type": "string", "description": "Was du sagst, höchstens 3 Sätze."}},
             ("text",),
         ),
         ABSTIMMEN: ToolSchema(

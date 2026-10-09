@@ -57,6 +57,19 @@ def test_cache_anteil_im_bericht() -> None:
     assert "aus dem Cache" not in bericht(auswerten([partie(None)]), "Test")
 
 
+def test_denk_anteil_im_bericht() -> None:
+    def partie(api: dict) -> VollmondPartie:
+        return VollmondPartie("Test", {"Anna": "Werwolf"}, {"Anna": "Werwolf"}, [], [], {}, 0, api)
+
+    # Ältere Logs ohne denk_tokens zählen als 0.
+    a = auswerten([partie({"aufrufe": 10, "input_tokens": 2000, "output_tokens": 400}),
+                   partie({"aufrufe": 10, "input_tokens": 4000, "output_tokens": 1600, "denk_tokens": 1000})])
+    text = bericht(a, "Test")
+    assert "Input-Tokens pro Partie:" in text and "3.000" in text
+    assert "Output-Tokens pro Partie:" in text and "1.000" in text
+    assert "Output-Tokens zum Nachdenken:" in text and "50%" in text
+
+
 def test_mensch_bericht() -> None:
     from werwolf.vollmondnacht.auswertung import mensch_bericht
 

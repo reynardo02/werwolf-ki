@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 from core.llm_client import OpenAIKompatiblerClient
-from core.schnittstellen import CHAT, SCHNITTSTELLEN
+from core.schnittstellen import CHAT, DENKSTUFEN, RESPONSES, SCHNITTSTELLEN
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,7 @@ class LLMKonfig:
     tool_choice: str = "required"
     max_pro_minute: int = 0
     schnittstelle: str = CHAT
+    denken: str = ""
 
     def client(self) -> OpenAIKompatiblerClient:
         return OpenAIKompatiblerClient(
@@ -30,6 +31,7 @@ class LLMKonfig:
             tool_choice=self.tool_choice,
             max_pro_minute=self.max_pro_minute,
             schnittstelle=self.schnittstelle,
+            denken=self.denken,
         )
 
 
@@ -60,6 +62,14 @@ def konfig_laden(env_datei: str | None = ".env") -> LLMKonfig:
     schnittstelle = os.getenv("LLM_SCHNITTSTELLE", CHAT).strip().lower()
     if schnittstelle not in SCHNITTSTELLEN:
         raise ValueError(f"LLM_SCHNITTSTELLE muss {' oder '.join(SCHNITTSTELLEN)} sein, nicht '{schnittstelle}'")
+    # Nachdenken kostet Ausgabe-Tokens. Bei /responses (OpenAI) standardmäßig wenig ("low").
+    # Bei chat nur, wenn ausdrücklich gesetzt: Nicht jeder Anbieter kennt das Feld, und die
+    # bisherigen Serien sollen vergleichbar bleiben. "standard" = Standard des Modells.
+    denken = os.getenv("LLM_DENKEN", "low" if schnittstelle == RESPONSES else "").strip().lower()
+    if denken == "standard":
+        denken = ""
+    if denken and denken not in DENKSTUFEN:
+        raise ValueError(f"LLM_DENKEN muss {', '.join(DENKSTUFEN)} oder standard sein, nicht '{denken}'")
 
     return LLMKonfig(
         base_url=base_url,
@@ -70,4 +80,5 @@ def konfig_laden(env_datei: str | None = ".env") -> LLMKonfig:
         tool_choice=os.getenv("LLM_TOOL_CHOICE", "required"),
         max_pro_minute=int(os.getenv("LLM_MAX_PRO_MINUTE", "0")),
         schnittstelle=schnittstelle,
+        denken=denken,
     )

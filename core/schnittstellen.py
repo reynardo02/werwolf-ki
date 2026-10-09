@@ -18,6 +18,9 @@ from core.tools import ToolCall, ToolSchema
 CHAT = "chat"
 RESPONSES = "responses"
 SCHNITTSTELLEN = (CHAT, RESPONSES)
+# Wie lange ein nachdenkendes Modell („Reasoning“) vor der Antwort nachdenken darf. Denk-Tokens
+# kosten wie Ausgabe-Tokens, man sieht sie nur nicht. "" = Standard des Modells, nichts schicken.
+DENKSTUFEN = ("minimal", "low", "medium", "high")
 
 
 @dataclass
@@ -25,15 +28,16 @@ class Nutzung:
     input_tokens: int = 0
     output_tokens: int = 0
     gecachte_tokens: int = 0
+    denk_tokens: int = 0  # Teil der output_tokens, den das Modell zum Nachdenken brauchte
 
 
 def anfrage_bauen(
     schnittstelle: str, system: str, nachricht: str, tools: list[ToolSchema],
-    tool_choice: str = "required", temperatur: float | None = None,
+    tool_choice: str = "required", temperatur: float | None = None, denken: str = "",
 ) -> dict[str, Any]:
     """Der Körper einer Anfrage (ohne Modell) im gewünschten Format."""
     if schnittstelle == RESPONSES:
-        return {
+        anfrage: dict[str, Any] = {
             "instructions": system,
             "input": [{"role": "user", "content": nachricht}],
             # strict=False: Sonst verlangt die API, dass jeder Parameter Pflicht ist –
@@ -43,13 +47,18 @@ def anfrage_bauen(
             # Nachdenkende Modelle nehmen keine Temperatur an; nichts speichern bei OpenAI.
             "store": False,
         }
-    anfrage: dict[str, Any] = {
+        if denken:
+            anfrage["reasoning"] = {"effort": denken}
+        return anfrage
+    anfrage = {
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": nachricht}],
         "tools": [t.als_openai() for t in tools],
         "tool_choice": tool_choice,
     }
     if temperatur is not None:
         anfrage["temperature"] = temperatur
+    if denken:
+        anfrage["reasoning_effort"] = denken
     return anfrage
 
 
@@ -69,8 +78,9 @@ def antwort_lesen(daten: Any) -> tuple[ToolCall | None, str, Nutzung]:
     nutzung = daten.get("usage") or {}
     if "output" in daten:  # Responses
         details = nutzung.get("input_tokens_details") or {}
+        aus = nutzung.get("output_tokens_details") or {}
         zahlen = Nutzung(nutzung.get("input_tokens") or 0, nutzung.get("output_tokens") or 0,
-                         details.get("cached_tokens") or 0)
+                         details.get("cached_tokens") or 0, aus.get("reasoning_tokens") or 0)
         tool_call, text = None, ""
         for teil in daten.get("output") or []:
             if not isinstance(teil, dict):
@@ -82,8 +92,9 @@ def antwort_lesen(daten: Any) -> tuple[ToolCall | None, str, Nutzung]:
         return tool_call, text, zahlen
     # Chat Completions
     details = nutzung.get("prompt_tokens_details") or {}
+    aus = nutzung.get("completion_tokens_details") or {}
     zahlen = Nutzung(nutzung.get("prompt_tokens") or 0, nutzung.get("completion_tokens") or 0,
-                     details.get("cached_tokens") or 0)
+                     details.get("cached_tokens") or 0, aus.get("reasoning_tokens") or 0)
     try:
         nachricht = daten["choices"][0]["message"]
     except (KeyError, IndexError, TypeError):

@@ -151,6 +151,8 @@ async function llmFragen(anfrage, p) {
         ...anfrage, model: zugang.modell,
         // Nachdenkende Modelle über /responses lehnen eine Temperatur ab.
         ...(!responses && zugang.temperatur !== undefined && { temperature: zugang.temperatur }),
+        // Denk-Tokens kosten wie Ausgabe – „wenig“ spart deutlich. „standard“: nichts schicken.
+        ...(responses && zugang.denken && zugang.denken !== "standard" && { reasoning: { effort: zugang.denken } }),
       }),
     });
     if (antwort.ok) return antwort.json();

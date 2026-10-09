@@ -118,6 +118,10 @@ Zusatz: Responses-Schnittstelle für OpenAI. GPT-6-Modelle (gpt-6-sol, gpt-6.1-s
   erkennen ihr Format selbst, gespeicherte Browser-Partien laufen weiter. Website: Adresse api.openai.com → /responses,
   alle anderen Anbieter → /chat/completions. Konsole: `LLM_SCHNITTSTELLE=responses` in der .env (Standard chat, damit die
   Serien vergleichbar bleiben).
+Zusatz: Kosten sparen. Denk-Tokens werden gemessen (`denk_tokens` aus reasoning_tokens; Statistik, Log, Protokoll, Auswertung
+  mit Input-/Output-Tokens pro Partie). Denkstufe einstellbar: `LLM_DENKEN` (Standard low bei responses, bei chat nichts) bzw.
+  Feld „Nachdenken“ auf der Website (Standard „wenig“, nur bei OpenAI geschickt). Reden höchstens 3 Sätze (system.txt beider
+  Varianten, Tool-Beschreibung) – ändert das Spiel, Serien danach sind eine neue Basis.
 
 ## Experimente (Vollmondnacht, Konfusion, 7 Spieler, gemini-3.5-flash-lite, Seeds 443803–443812)
 Immer nur eine Änderung gegenüber Serie 1, Kennzahl: Dorf-Stimmen gegen Werwölfe (Zufall 24,2 %).

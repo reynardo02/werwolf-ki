@@ -187,7 +187,7 @@ BESCHREIBUNGEN = {
 }
 
 _TEXT = {
-    SPRECHEN: {"text": {"type": "string", "description": "Was du sagst, 1–3 Sätze."}},
+    SPRECHEN: {"text": {"type": "string", "description": "Was du sagst, höchstens 3 Sätze."}},
 }
 _BEGRUENDUNG = {"type": "string", "description": "Deine ehrliche, private Begründung. Niemand sieht sie."}
 

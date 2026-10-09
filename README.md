@@ -41,6 +41,8 @@ oder bei [OpenAI](https://platform.openai.com/api-keys). Trag ihn auf der Seite 
 - **OpenAI** (`gpt-6.1-sol`, voreingestellt): spielt in unseren Tests sehr gut – Werwölfe bluffen geschickt,
   das Dorf zieht saubere Schlüsse. Kostet ein paar Cent pro Partie. Bei OpenAI nutzt die Seite automatisch
   die neue Responses-Schnittstelle.
+- **Nachdenken (nur OpenAI):** Steht auf „wenig“. Die Denk-Tokens kosten wie Ausgabe, sieht man aber nicht –
+  „wenig“ spart deutlich, „viel“ macht die Spieler vielleicht klüger, aber teurer.
 - **Andere OpenAI-Modelle:** Ins Feld „Modell“ z. B. `gpt-5.4` (bisheriger Standard, teurer) oder `gpt-6-luna`
   (sehr billig, noch nicht erprobt) eintragen.
 - **Google Gemini** (`gemini-3.5-flash-lite`): günstig, im kostenlosen Tarif nutzbar, spielt aber deutlich schwächer.
