@@ -286,6 +286,13 @@
           <input id="tempo" type="number" min="0" value="1000">
         </div>
       </div>
+      <label for="denken">Nachdenken (nur OpenAI)</label>
+      <select id="denken">
+        <option value="low">wenig – günstig</option>
+        <option value="medium">mittel</option>
+        <option value="high">viel – teuer</option>
+        <option value="standard">Standard des Modells</option>
+      </select>
       <label for="key">API-Key</label>
       <input id="key" type="password" autocomplete="off" placeholder="nur für LLM-Mitspieler nötig">
       <label style="display:flex; gap:8px; align-items:center">
@@ -340,7 +347,7 @@ async function modusErkennen() {
 }
 
 // --- LLM-Zugang (nur Browser-Modus) --------------------------------------
-const ZUGANG = ["anbieter", "basis", "modell", "tempo"];
+const ZUGANG = ["anbieter", "basis", "modell", "tempo", "denken"];
 
 // Vorlagen pro Anbieter. GPT-5-Modelle nehmen nur temperature=1 an (Serie 9/10),
 // Gemini bleibt bei 0,9 wie in den Konsolen-Partien.

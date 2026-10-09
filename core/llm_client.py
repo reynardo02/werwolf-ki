@@ -58,6 +58,7 @@ class Statistik:
     input_tokens: int = 0
     gecachte_tokens: int = 0  # Teil der input_tokens, den der Anbieter aus dem Cache billiger berechnet
     output_tokens: int = 0
+    denk_tokens: int = 0  # Teil der output_tokens, den das Modell zum Nachdenken brauchte
     fehler: int = 0  # Aufrufe, bei denen der Anbieter einen Fehler gemeldet hat
     ohne_tool_call: int = 0  # Antworten ohne (lesbaren) Tool-Call
     letzter_fehler: str = ""
@@ -88,6 +89,8 @@ class OpenAIKompatiblerClient:
     # "chat" (/chat/completions, versteht fast jeder Anbieter) oder "responses" (/responses,
     # OpenAI): GPT-6-Modelle nutzen Tools beim Nachdenken nur über /responses.
     schnittstelle: str = CHAT
+    # Denkstufe für nachdenkende Modelle ("low", "medium", …), "" = Standard des Modells.
+    denken: str = ""
     sdk: Any = None  # Nur für Tests: ein vorbereiteter openai.OpenAI-Client
     statistik: Statistik = field(default_factory=Statistik)
     # Uhr und Warten sind austauschbar, damit Tests nicht wirklich warten müssen.
@@ -107,7 +110,7 @@ class OpenAIKompatiblerClient:
         self.statistik.aufrufe += 1
 
         anfrage = {"model": self.modell} | anfrage_bauen(
-            self.schnittstelle, system, nachricht, tools, self.tool_choice, self.temperatur
+            self.schnittstelle, system, nachricht, tools, self.tool_choice, self.temperatur, self.denken
         )
         senden = self.sdk.responses.create if self.schnittstelle == RESPONSES else self.sdk.chat.completions.create
         for versuch in range(self.versuche_bei_limit + 1):
@@ -133,6 +136,7 @@ class OpenAIKompatiblerClient:
         self.statistik.input_tokens += nutzung.input_tokens
         self.statistik.output_tokens += nutzung.output_tokens
         self.statistik.gecachte_tokens += nutzung.gecachte_tokens  # nicht jeder Anbieter meldet den Cache
+        self.statistik.denk_tokens += nutzung.denk_tokens
         if tool_call is None:
             self.statistik.ohne_tool_call += 1
         return Antwort(tool_call, text)
